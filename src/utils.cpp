@@ -6,8 +6,6 @@
 #include <wincrypt.h>
 
 #include <io.h>
-//#include <cstring>
-#include <codecvt>
 
 #include <fmt/core.h>
 #include <boost/range.hpp>
@@ -16,26 +14,20 @@
 
 #include <ext/config.hpp>
 #include <ext/errors.hpp>
-#include <ext/codecvt_conv.hpp>
+#include <ext/codecvt_conv/generic_conv.hpp>
+#include <ext/codecvt_conv/wchar_cvt.hpp>
 #include <ext/filesystem_utils.hpp>
 
 #include <ext/wincrypt/utils.hpp>
 
 namespace ext::wincrypt
 {
-	const std::codecvt_utf8_utf16<wchar_t, 0x10FFFF, std::codecvt_mode::little_endian> u8_cvt;
 	struct hlocal_deleter { void operator()(void * ptr) const noexcept { ::LocalFree(ptr); }; };
 	using hlocal_uptr = std::unique_ptr<void, hlocal_deleter>;
 
-	static std::string to_utf8(std::wstring_view wstr)
-	{
-		return ext::codecvt_convert::to_bytes(u8_cvt, wstr);
-	}
-
-	static std::wstring to_utf16(std::string_view str)
-	{
-		return ext::codecvt_convert::from_bytes(u8_cvt, str);
-	}
+	using ext::codecvt_convert::wchar_cvt::to_utf8;
+	using ext::codecvt_convert::wchar_cvt::to_wchar;
+	
 
 	void hcrypt_handle_traits::addref(::HCRYPTPROV hprov) noexcept
 	{
@@ -102,8 +94,8 @@ namespace ext::wincrypt
 	/// wrapper around CryptAcquireContext
 	hprov_handle acquire_provider(const char * provname, const char * container, std::uint32_t type, unsigned flags)
 	{
-		return acquire_provider(provname  ? to_utf16(provname).c_str()  : nullptr,
-		                        container ? to_utf16(container).c_str() : nullptr,
+		return acquire_provider(provname  ? to_wchar(provname).c_str()  : nullptr,
+		                        container ? to_wchar(container).c_str() : nullptr,
 		                        type, flags);
 	}
 
@@ -415,8 +407,9 @@ namespace ext::wincrypt
 		// https://docs.microsoft.com/en-us/windows/win32/seccrypto/constants-for-cryptencodeobject-and-cryptdecodeobject
 		// https://docs.microsoft.com/en-us/windows/win32/seccrypto/diffie-hellman-version-3-public-key-blobs
 
-		// as per MSDN for RSA_CSP_PUBLICKEYBLOB result is:
-		// For the decode functions, pvStructInfo points to a public key BLOB immediately followed by a RSAPUBKEY and the modulus bytes. (For information about public key BLOBs, see CRYPT_INTEGER_BLOB.)
+		// as per MSDN for RSA_CSP_PUBLICKEYBLOB result is, qouting MSDN:
+		// For the decode functions, pvStructInfo points to a public key BLOB immediately followed by a RSAPUBKEY and the modulus bytes.
+		// (For information about public key BLOBs, see CRYPT_INTEGER_BLOB.)
 		PUBLICKEYSTRUC pubkeyst;
 		RSAPUBKEY rsapubkey;
 

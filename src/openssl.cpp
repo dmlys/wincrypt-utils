@@ -6,6 +6,9 @@
 #include <windows.h>
 #include <wincrypt.h>
 
+// defined in wincrypt, conflicts with openssl
+#undef X509_NAME
+
 #include <ext/wincrypt/utils.hpp>
 #include <ext/wincrypt/openssl.hpp>
 
@@ -14,21 +17,14 @@
 #include <openssl/err.h>
 #include <openssl/engine.h>
 
-#include <codecvt>
-#include <ext/codecvt_conv.hpp>
+#include <ext/codecvt_conv/generic_conv.hpp>
+#include <ext/codecvt_conv/wchar_cvt.hpp>
 
 namespace ext::wincrypt
 {
-	const std::codecvt_utf8_utf16<wchar_t, 0x10FFFF, std::codecvt_mode::little_endian> u8_cvt;
-	static std::string to_utf8(std::wstring_view wstr)
-	{
-		return ext::codecvt_convert::to_bytes(u8_cvt, wstr);
-	}
-
-	static std::wstring to_utf16(std::string_view str)
-	{
-		return ext::codecvt_convert::from_bytes(u8_cvt, str);
-	}
+	using ext::codecvt_convert::wchar_cvt::to_utf8;
+	using ext::codecvt_convert::wchar_cvt::to_wchar;
+	
 	
 	static std::string to_string(const ::BIGNUM * num)
 	{
@@ -41,7 +37,7 @@ namespace ext::wincrypt
 	static std::wstring to_u16string(const ::BIGNUM * num)
 	{
 		auto * str = ::BN_bn2dec(num);
-		auto result = to_utf16(str);
+		auto result = to_wchar(str);
 		::OPENSSL_free(str);
 		return result;
 	}
