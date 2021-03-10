@@ -76,6 +76,10 @@ namespace ext::wincrypt
 
 	hcertstore_uptr open_system_store(const char * name);
 	hcertstore_uptr open_system_store(const wchar_t * name);
+	
+	/// CryptImportKey wrapper
+	/// @Throws system_error in case of errors
+	hkey_uptr import_key(::HCRYPTPROV prov, const unsigned char * blob_buffer, unsigned buffer_size, unsigned flags = 0, ::HCRYPTKEY decryption_key = 0);
 
 	// https://stackoverflow.com/questions/4191312/windows-cryptoapi-cryptsignhash-with-calg-sha-256-and-private-key-from-my-keyst
 	// how to reopen private key that is associated with some certificate in store and is with bound Microsoft Base crypto provider(does not support SHA2)

@@ -179,6 +179,15 @@ namespace ext::wincrypt
 		return hcertstore_uptr(store);
 	}
 
+	hkey_uptr import_key(::HCRYPTPROV prov, const unsigned char * blob_buffer, unsigned buffer_size, unsigned flags, ::HCRYPTKEY decryption_key)
+	{
+		hkey_uptr hkey(new ::HCRYPTKEY(0));
+		WINBOOL res = ::CryptImportKey(prov, blob_buffer, buffer_size, decryption_key, flags, hkey.get());
+		if (not res) ext::throw_last_system_error("ext::wincrypt::import_key ::CryptImportKey failed");
+		
+		return hkey;
+	}
+	
 	static std::vector<char> read_file(std::FILE * file)
 	{
 		std::vector<char> content;
