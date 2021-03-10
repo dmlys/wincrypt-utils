@@ -47,9 +47,12 @@ namespace ext::wincrypt
 		static void subref(const ::CERT_CONTEXT * pcert) noexcept;
 	};
 
+	struct hlocal_deleter { void operator()(void * ptr) const noexcept; };
 	struct hkey_deleter { void operator()(::HCRYPTKEY * pkey) const noexcept; };
 	struct hcertstore_deleter { void operator()(::HCERTSTORE store) const noexcept; };
 
+	using hlocal_uptr = std::unique_ptr<void, hlocal_deleter>;
+	
 	using cert_iptr    = ext::intrusive_ptr<const ::CERT_CONTEXT, cert_ptr_traits>;
 	using hprov_handle = ext::intrusive_handle<::HCRYPTPROV, hcrypt_handle_traits>;
 
@@ -91,6 +94,10 @@ namespace ext::wincrypt
 	/// loads private key from given memory location and with optional password.
 	/// private key expected to be in usual PEM or DER format
 	/// Throws std::system_error in case of errors
+	/// NOTE: this method loads key in PKCS#8 format, identified by header -----BEGIN PRIVATE KEY-----
+	///        -----BEGIN RSA PRIVATE KEY----- is PKCS#1 and should be loaded via different method
+	/// https://stackoverflow.com/questions/20065304/differences-between-begin-rsa-private-key-and-begin-private-key
+	/// https://stackoverflow.com/a/20065522/1682317
 	/// NOTE: passwords not supported yet,
 	///       key is placed into provider, and can be later retrieved via CryptGetUserKey,
 	///       also key returned by this function
@@ -100,14 +107,14 @@ namespace ext::wincrypt
 	hkey_uptr load_private_key_from_file(::HCRYPTPROV prov, std::FILE * file, std::string_view passwd = "");
 
 	inline hkey_uptr load_private_key(::HCRYPTPROV prov, std::string_view str, std::string_view passwd = "") { return load_private_key(prov, str.data(), str.size(), passwd); }
-
+		
 	/// obtains algorithm id for given key, see:
 	/// https://docs.microsoft.com/en-us/windows/win32/api/wincrypt/nf-wincrypt-cryptgetkeyparam
 	/// https://docs.microsoft.com/en-us/windows/win32/seccrypto/alg-id
 	/// https://docs.microsoft.com/en-us/windows/win32/api/wincrypt/nf-wincrypt-certoidtoalgid
 	ALG_ID get_algid(::HCRYPTKEY key);
 
-	/// obtains keyspec(AT_EXCHANGE or AT_SIGNATURE) that this key is presumably have in corresponding HPROV.
+	/// obtains keyspec(AT_KEYEXCHANGE or AT_SIGNATURE) that this key is presumably have in corresponding HPROV.
 	/// this done by inspecting key ALG_ID:
 	///   CALG_RSA_KEYX -> AT_KEYEXCHANGE
 	///   CALG_RSA_SIGN -> AT_SIGNATURE

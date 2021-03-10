@@ -22,9 +22,6 @@
 
 namespace ext::wincrypt
 {
-	struct hlocal_deleter { void operator()(void * ptr) const noexcept { ::LocalFree(ptr); }; };
-	using hlocal_uptr = std::unique_ptr<void, hlocal_deleter>;
-
 	using ext::codecvt_convert::wchar_cvt::to_utf8;
 	using ext::codecvt_convert::wchar_cvt::to_wchar;
 	
@@ -60,6 +57,11 @@ namespace ext::wincrypt
 		assert(res); EXT_UNUSED(res);
 	}
 
+	void hlocal_deleter::operator()(void * ptr) const noexcept
+	{
+		::LocalFree(ptr);
+	};
+	
 	void hkey_deleter::operator()(::HCRYPTKEY * pkey) const noexcept
 	{
 		if (not pkey) return;
@@ -164,7 +166,7 @@ namespace ext::wincrypt
 	hcertstore_uptr open_system_store(const char * name)
 	{
 		auto * store = ::CertOpenSystemStoreA(0, name);
-		if (not store) ext::throw_last_system_error("winctypt_utils::open_system_store CertOpenSystemStore failed");
+		if (not store) ext::throw_last_system_error("ext::wincrypt::open_system_store CertOpenSystemStore failed");
 
 		return hcertstore_uptr(store);
 	}
@@ -172,7 +174,7 @@ namespace ext::wincrypt
 	hcertstore_uptr open_system_store(const wchar_t * name)
 	{
 		auto * store = ::CertOpenSystemStoreW(0, name);
-		if (not store) ext::throw_last_system_error("winctypt_utils::open_system_store CertOpenSystemStore failed");
+		if (not store) ext::throw_last_system_error("ext::wincrypt::open_system_store CertOpenSystemStore failed");
 
 		return hcertstore_uptr(store);
 	}
@@ -253,27 +255,27 @@ namespace ext::wincrypt
 		DWORD written, pkey_info_length, pkey_rsa_blob_length;
 		CRYPT_PRIVATE_KEY_INFO * pkey_info_ptr = nullptr;
 		unsigned char * pkey_rsa_blob_ptr = 0;
-
-		hlocal_uptr pkey_info_uptr(pkey_info_ptr);
+		
+		hlocal_uptr pkey_info_uptr;
 		hlocal_uptr pkey_info_pkey_blob_uptr;
-		hlocal_uptr pkey_rsa_blob_uptr(pkey_rsa_blob_ptr);
-
+		hlocal_uptr pkey_rsa_blob_uptr;
+		
 		std::vector<unsigned char> der_data;
 		der_data.resize(len / 4 * 3);
-
+		
 		res = ::CryptStringToBinaryA(data, len, CRYPT_STRING_ANY, der_data.data(), &written, nullptr, nullptr);
 		if (not res) ext::throw_last_system_error("ext::wincrypt::load_private_key: CryptStringToBinary failed");
-
-		res = ::CryptDecodeObjectEx(X509_ASN_ENCODING, PKCS_PRIVATE_KEY_INFO,
+		
+		res = ::CryptDecodeObjectEx(PKCS_7_ASN_ENCODING, PKCS_PRIVATE_KEY_INFO,
 		                            der_data.data(), written,
 		                            CRYPT_ENCODE_ALLOC_FLAG, nullptr, &pkey_info_ptr, &pkey_info_length);
-
-		pkey_info_pkey_blob_uptr.reset(pkey_info_ptr->PrivateKey.pbData);
-
+		
 		if (not res)
 			ext::throw_last_system_error("ext::wincrypt::load_private_key: CryptDecodeObjectEx(PKCS_PRIVATE_KEY_INFO) failed while decoding encoded RSA private key");
-
-
+		
+		pkey_info_uptr.reset(pkey_info_ptr);
+		pkey_info_pkey_blob_uptr.reset(pkey_info_ptr->PrivateKey.pbData);
+		
 		if (not boost::starts_with(pkey_info_ptr->Algorithm.pszObjId, szOID_RSA))
 		{
 			std::string errmsg = "ext::wincrypt::load_private_key: bad algorithm. expected RSA";
@@ -281,21 +283,22 @@ namespace ext::wincrypt
 			errmsg += "was - "; errmsg += pkey_info_ptr->Algorithm.pszObjId;
 			throw std::runtime_error(errmsg);
 		}
-
-		res = ::CryptDecodeObjectEx(X509_ASN_ENCODING, PKCS_RSA_PRIVATE_KEY,
+		
+		res = ::CryptDecodeObjectEx(PKCS_7_ASN_ENCODING, PKCS_RSA_PRIVATE_KEY,
 		                            pkey_info_ptr->PrivateKey.pbData, pkey_info_ptr->PrivateKey.cbData,
 		                            CRYPT_ENCODE_ALLOC_FLAG, nullptr, &pkey_rsa_blob_ptr, &pkey_rsa_blob_length);
-
+		
+		pkey_rsa_blob_uptr.reset(pkey_rsa_blob_ptr);
 		if (not res)
 			ext::throw_last_system_error("ext::wincrypt::load_private_key: CryptDecodeObjectEx(PKCS_RSA_PRIVATE_KEY) failed while decoding encoded RSA private key");
-
-
+		
+		
 		hkey_uptr privkey_uptr(new ::HCRYPTKEY(0));
 		res = ::CryptImportKey(prov, pkey_rsa_blob_ptr, pkey_rsa_blob_length, 0, 0, privkey_uptr.get());
-
+		
 		if (not res)
 			ext::throw_last_system_error("ext::wincrypt::load_private_key: CryptImportKey failed while importing decoded RSA private key");
-
+		
 		return privkey_uptr;
 	}
 
@@ -444,6 +447,7 @@ namespace ext::wincrypt
 		result.resize(required, 0);
 
 		auto written = ::CertNameToStrW(X509_ASN_ENCODING, const_cast<CERT_NAME_BLOB *>(name), flags, result.data(), required);
+		while (not result[written - 1]) --written;
 		result.resize(written);
 
 		return result;
@@ -463,6 +467,7 @@ namespace ext::wincrypt
 		result.resize(required, 0);
 
 		auto written = ::CertNameToStrW(X509_ASN_ENCODING, const_cast<CERT_NAME_BLOB *>(name), flags, result.data(), required);
+		while (not result[written - 1]) --written;
 		result.resize(written);
 
 		return result;
