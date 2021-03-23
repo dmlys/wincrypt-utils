@@ -6,7 +6,6 @@
 #include <prsht.h>
 #include <wincrypt.h>
 #include <cryptuiapi.h>
-#include <cryptdlg.h>
 
 #include <ext/errors.hpp>
 #include <ext/wincrypt/utils.hpp>
@@ -15,6 +14,53 @@
 #ifdef _MSC_VER
 #pragma comment(lib, "cryptui.lib")
 #endif
+
+// CertSelectCertificate stuff
+// Sadly MINGW does not provide cryptdlg.h, also wine does not implement CertSelectCertificate, call to it - returns not implemented.
+// Well at least we can make it compile under MINGW, we just need to define struct CERT_SELECT_STRUCT_W and 2 function typedefs
+#if not BOOST_PLAT_MINGW
+#include <cryptdlg.h>
+#else
+typedef UINT (WINAPI *PFNCMHOOKPROC)
+(
+	HWND   hwndDialog,
+	UINT   message,
+	WPARAM wParam,
+	LPARAM lParam
+);
+
+typedef BOOL (WINAPI *PFNCMFILTERPROC)
+(
+	PCCERT_CONTEXT pCertContext,
+	LPARAM Arg2,
+	DWORD  Arg3,
+	DWORD  Arg4
+);
+
+typedef struct tagCSSW {
+	DWORD           dwSize;
+	HWND            hwndParent;
+	HINSTANCE       hInstance;
+	LPCWSTR         pTemplateName;
+	DWORD           dwFlags;
+	LPCWSTR         szTitle;
+	DWORD           cCertStore;
+	HCERTSTORE      *arrayCertStore;
+	LPCSTR          szPurposeOid;
+	DWORD           cCertContext;
+	PCCERT_CONTEXT  *arrayCertContext;
+	LPARAM          lCustData;
+	PFNCMHOOKPROC   pfnHook;
+	PFNCMFILTERPROC pfnFilter;
+	LPCWSTR         szHelpFileName;
+	DWORD           dwHelpId;
+	HCRYPTPROV      hprov;
+} CERT_SELECT_STRUCT_W, *PCERT_SELECT_STRUCT_W;
+
+#endif // BOOST_PLAT_MINGW
+
+
+
 
 typedef BOOL (WINAPI * PFNCCERTDISPLAYPROC)(
   _In_ PCCERT_CONTEXT pCertContext,
@@ -164,7 +210,7 @@ namespace ext::wincrypt
 		//auto * cert = CryptUIDlgSelectCertificate(&params);
 		return cert_iptr(cert, ext::noaddref);
 	}
-	
+
 	cert_iptr cert_select_certificate(::HCERTSTORE store, void * hwnd_parent, const wchar_t * title, std::function<bool(PCCERT_CONTEXT)> filter)
 	{
 		SelectCertificateFilterParams filter_callback_data;
