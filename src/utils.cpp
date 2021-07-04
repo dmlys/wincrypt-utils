@@ -83,11 +83,14 @@ namespace ext::wincrypt
 		BOOL res = ::CryptAcquireContextW(&hprov, container, provname, type, flags);
 		if (not res)
 		{
+			auto err = ::GetLastError();
+			if (err == NTE_BAD_KEYSET) return hprov_handle();
+			
 			auto provnamea = to_utf8(provname ? provname : L"<null>");
 			auto containera = to_utf8(container ? container : L"<null>");
 			std::string errmsg = fmt::format("ext::wincrypt::acquire_provider: CryptAcquireContext failed with provname = {}, container = {}, type = {}, flags = {}", provnamea, containera, type, flags);
 
-			ext::throw_last_system_error(errmsg);
+			throw std::system_error(err, std::system_category(), errmsg);						
 		}
 
 		return hprov_handle(hprov, ext::noaddref);
@@ -327,7 +330,7 @@ namespace ext::wincrypt
 		assert(name);
 		
 		auto * store = ::CertOpenSystemStoreA(0, name);
-		if (not store) ext::throw_last_system_error("ext::wincrypt::open_system_store CertOpenSystemStore failed");
+		if (not store) ext::throw_last_system_error("ext::wincrypt::open_system_store: CertOpenSystemStore failed");
 
 		return hcertstore_uptr(store);
 	}
@@ -337,13 +340,56 @@ namespace ext::wincrypt
 		assert(name);
 		
 		auto * store = ::CertOpenSystemStoreW(0, name);
-		if (not store) ext::throw_last_system_error("ext::wincrypt::open_system_store CertOpenSystemStore failed");
+		if (not store) ext::throw_last_system_error("ext::wincrypt::open_system_store: CertOpenSystemStore failed");
 
 		return hcertstore_uptr(store);
 	}
 	
+	auto add_certificate(::HCERTSTORE cert_store, const unsigned char * data, std::size_t data_size, unsigned disposition /* = -1, CERT_STORE_ADD_NEW*/) -> cert_iptr
+	{
+		assert(cert_store);
+		assert(data and data_size);
+		
+		if (disposition == -1) disposition = CERT_STORE_ADD_NEW;
+		
+		const CERT_CONTEXT * cert;
+		BOOL res = ::CertAddEncodedCertificateToStore(
+		                 cert_store,
+		                 X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+		                 data, data_size, disposition,
+		                 &cert);
+		
+		if (not res) ext::throw_last_system_error("ext::wincrypt::add_certificate: CertAddEncodedCertificateToStore failed");
+		
+		return cert_iptr(cert, ext::noaddref);
+	}
+	
+	auto add_certificate(::HCERTSTORE cert_store, const ::CERT_CONTEXT * cert, unsigned disposition /* = -1, CERT_STORE_ADD_NEW*/) -> cert_iptr
+	{
+		assert(cert_store);
+		assert(cert);
+		
+		if (disposition == -1) disposition = CERT_STORE_ADD_NEW;
+		
+		const CERT_CONTEXT * cert2;
+		BOOL res = ::CertAddCertificateContextToStore(cert_store, cert, disposition, &cert2);
+		if (not res) ext::throw_last_system_error("ext::wincrypt::add_certificate: CertAddCertificateContextToStore failed");
+		
+		return cert_iptr(cert2, ext::noaddref);
+	}
+	
+	void delete_certificate(cert_iptr cert)
+	{
+		assert(cert);
+		
+		BOOL res = ::CertDeleteCertificateFromStore(cert.release());
+		if (not res) ext::throw_last_system_error("ext::wincrypt::delete_certificate: CertDeleteCertificateFromStore failed");
+	}
+	
 	auto get_certificates(::HCERTSTORE cert_store) -> std::vector<cert_iptr>
 	{
+		assert(cert_store);
+		
 		std::vector<cert_iptr> certs;
 		
 		const CERT_CONTEXT * cert = nullptr;
@@ -367,6 +413,8 @@ namespace ext::wincrypt
 
 	cert_iptr find_first_certificate_by_subject(::HCERTSTORE cert_store, std::string_view subject)
 	{
+		assert(cert_store);
+		
 		std::wstring wsubject = ext::codecvt_convert::wchar_cvt::to_wchar(subject);
 		auto result = ::CertFindCertificateInStore(
 		            cert_store, X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
@@ -378,6 +426,8 @@ namespace ext::wincrypt
 	
 	std::vector<cert_iptr> find_certificates_by_subject(::HCERTSTORE cert_store, std::string_view subject)
 	{
+		assert(cert_store);
+		
 		std::vector<cert_iptr> certs;
 		std::wstring wsubject = ext::codecvt_convert::wchar_cvt::to_wchar(subject);
 		
@@ -397,6 +447,27 @@ namespace ext::wincrypt
 		}
 		
 		return certs;
+	}
+	
+	auto find_certificate_by_hash(::HCERTSTORE cert_store, unsigned int find_type, const unsigned char * hash_data, std::size_t hash_size) -> cert_iptr
+	{
+		assert(cert_store);
+		
+		CRYPT_HASH_BLOB hashblob;
+		hashblob.cbData = hash_size;
+		hashblob.pbData = const_cast<unsigned char *>(hash_data);
+		
+		auto result = ::CertFindCertificateInStore(
+		            cert_store, X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+		            0, find_type,
+		            &hashblob, nullptr);
+		
+		return cert_iptr(result, ext::noaddref);
+	}
+	
+	auto find_certificate_by_sha1fingerprint(::HCERTSTORE cert_store, const unsigned char * fp_data, std::size_t fp_size) -> cert_iptr
+	{
+		return find_certificate_by_hash(cert_store, CERT_FIND_SHA1_HASH, fp_data, fp_size);
 	}
 	
 	cert_iptr import_certificate(::HCERTSTORE cert_store, const ::CERT_CONTEXT * cert, unsigned dispositionFlags)
@@ -501,7 +572,7 @@ namespace ext::wincrypt
 		                                nullptr, &data, &size);
 
 		if (not res)
-			ext::throw_last_system_error("::CryptDecodeObjectEx failed while extracting RSA public key");
+			ext::throw_last_system_error("ext::wincrypt::extract_rsapubkey_numbers: ::CryptDecodeObjectEx failed while extracting RSA public key");
 
 
 		hlocal_uptr data_uptr(data);
@@ -529,12 +600,12 @@ namespace ext::wincrypt
 		return result;
 	}
 
-	std::string X509_name_string(const CERT_NAME_BLOB * name)
+	std::string x509_name_string(const CERT_NAME_BLOB * name)
 	{
-		return to_utf8(X509_name_wstring(name));
+		return to_utf8(x509_name_wstring(name));
 	}
 
-	std::wstring X509_name_wstring(const CERT_NAME_BLOB * name)
+	std::wstring x509_name_wstring(const CERT_NAME_BLOB * name)
 	{
 		assert(name);
 		
@@ -551,12 +622,12 @@ namespace ext::wincrypt
 		return result;
 	}
 
-	std::string X509_name_reverse_string(const CERT_NAME_BLOB * name)
+	std::string x509_name_reverse_string(const CERT_NAME_BLOB * name)
 	{
-		return to_utf8(X509_name_reverse_wstring(name));
+		return to_utf8(x509_name_reverse_wstring(name));
 	}
 
-	std::wstring X509_name_reverse_wstring(const CERT_NAME_BLOB * name)
+	std::wstring x509_name_reverse_wstring(const CERT_NAME_BLOB * name)
 	{
 		assert(name);
 		
@@ -572,6 +643,22 @@ namespace ext::wincrypt
 		while (not result[written - 1]) --written;
 		result.resize(written);
 
+		return result;
+	}
+	
+	std::vector<unsigned char> cert_sha1fingerprint(const ::CERT_CONTEXT * cert)
+	{
+		assert(cert);
+		
+		std::vector<unsigned char> result;
+		DWORD ressize = 20; // SHA1 produces 160-bit (20-byte) hash value
+		result.resize(ressize);
+
+		BOOL res = ::CertGetCertificateContextProperty(cert, CERT_HASH_PROP_ID, result.data(), &ressize);
+		if (not res) ext::throw_last_system_error("ext::wincrypt::cert_sha1fingerprint: CertGetCertificateContextProperty failed");
+		
+		assert(ressize == 20);
+		//result.resize(ressize);
 		return result;
 	}
 	

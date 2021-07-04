@@ -1,4 +1,7 @@
 #pragma once
+#include <boost/predef.h>
+#if BOOST_OS_WINDOWS
+
 #include <ext/wincrypt/utils.hpp>
 
 namespace ext::wincrypt
@@ -13,3 +16,5 @@ namespace ext::wincrypt
 	/// simple wrapper around CertSelectCertificate
 	cert_iptr cert_select_certificate(::HCERTSTORE store, void * hwnd_parent, const wchar_t * title, std::function<bool(const CERT_CONTEXT *)> filter);
 }
+
+#endif

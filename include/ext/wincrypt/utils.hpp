@@ -66,6 +66,37 @@ namespace ext::wincrypt
 	/*                     HCRYPTPROV basic stuff                           */
 	/************************************************************************/
 	/// wrapper around CryptAcquireContext
+	/// https://docs.microsoft.com/en-us/windows/win32/seccrypto/cryptographic-provider-types
+	/// https://docs.microsoft.com/en-us/windows/win32/api/wincrypt/nf-wincrypt-cryptacquirecontextw
+	/// 
+	/// provname  - A null-terminated string that contains the name of the CSP to be used.
+	///             If this parameter is NULL, the user default provider is used.
+	/// container - The key container name, for CRYPT_VERIFYCONTEXT should be null
+	/// type      - provider type. Interesting types: PROV_RSA_FULL, PROV_RSA_AES
+	/// 
+	/// flags:
+	///  CRYPT_VERIFYCONTEXT  - This option is intended for applications that are using ephemeral keys,
+	///                         or applications that do not require access to persisted private keys
+	///  CRYPT_NEWKEYSET      - Creates a new key container with the name specified by container.
+	///                         If container is NULL, a key container with the default name is created. 
+	///  CRYPT_MACHINE_KEYSET - By default, keys and key containers are stored as user keys.
+	///  CRYPT_DELETEKEYSET   - Delete the key container specified by pszContainer. 
+	///                         If container is NULL, the key container with the default name is deleted.
+	///                         All key pairs in the key container are also destroyed. 
+	///  CRYPT_SILENT         - The application requests that the CSP not display any user interface (UI) for this context.
+	///                         If the CSP must display the UI to operate, the call fails and the NTE_SILENT_CONTEXT error code is set as the last error.
+	/// 
+	/// interesting provider names: 
+	///   MS_DEF_PROV      - Microsoft Base Cryptographic Provider;     type = PROV_RSA_FULL
+	///                      https://docs.microsoft.com/en-us/windows/win32/seccrypto/microsoft-base-cryptographic-provider
+	///   MS_ENHANCED_PROV - Microsoft Enhanced Cryptographic Provider; type = PROV_RSA_FULL
+	///                      https://docs.microsoft.com/en-us/windows/win32/seccrypto/microsoft-enhanced-cryptographic-provider
+	///   MS_STRONG_PROV   - Microsoft Strong Cryptographic Provider;   type = PROV_RSA_FULL
+	///                      https://docs.microsoft.com/en-us/windows/win32/seccrypto/microsoft-strong-cryptographic-provider
+	/// 
+	///   MS_ENH_RSA_AES_PROV    - Microsoft AES Cryptographic Provider; type = PROV_RSA_AES
+	///                            https://docs.microsoft.com/en-us/windows/win32/seccrypto/microsoft-aes-cryptographic-provider
+	///   MS_ENH_RSA_AES_PROV_XP - Microsoft Enhanced RSA and AES Cryptographic Provider (Prototype); type = PROV_RSA_AES
 	hprov_handle acquire_provider(const wchar_t * provname, const wchar_t * container, std::uint32_t type, unsigned flags = 0);
 	hprov_handle acquire_provider(const char * provname, const char * container, std::uint32_t type, unsigned flags = 0);
 	hprov_handle acquire_provider(std::nullptr_t provname, std::nullptr_t container, std::uint32_t type, unsigned flags = 0);
@@ -130,6 +161,20 @@ namespace ext::wincrypt
 	hcertstore_uptr open_system_store(const char * name);
 	hcertstore_uptr open_system_store(const wchar_t * name);
 	
+	/// Adds certificate to a given store, adding makes a duplicate and it is returned.
+	/// Basicly wrapper CertAddEncodedCertificateToStore 
+	/// Throws system_error in case of errors
+	auto add_certificate(::HCERTSTORE cert_store, const unsigned char * data, std::size_t data_size, unsigned disposition = -1/*CERT_STORE_ADD_NEW*/) -> cert_iptr;
+	/// Adds certificate to a given store, adding makes a duplicate and it is returned.
+	/// Basicly wrapper CertAddEncodedCertificateToStore, data is taken from cert structure
+	/// Throws system_error in case of errors
+	auto add_certificate(::HCERTSTORE cert_store, const ::CERT_CONTEXT * cert, unsigned disposition = -1/*CERT_STORE_ADD_NEW*/) -> cert_iptr;	
+	/// Deletes certificate from store. Wrapper around CertDeleteCertificateFromStore.
+	/// The CertDeleteCertificateFromStore function always frees pCertContext by calling the CertFreeCertificateContext function, even if an error is encountered.
+	/// Thats why this function takes cert by smart pointer.
+	/// Throws system_error in case of errors
+	void delete_certificate(cert_iptr cert);
+	
 	/// Gets all certificates from store,
 	/// basicly wrapper for CertFindCertificateInStore with findType = CERT_FIND_ANY
 	/// Throws system_error in case of errors
@@ -142,6 +187,18 @@ namespace ext::wincrypt
 	/// basicly wrapper for CertFindCertificateInStore with findType = CERT_FIND_SUBJECT_STR
 	/// Throws system_error in case of errors
 	auto find_certificates_by_subject(::HCERTSTORE cert_store, std::string_view subject) -> std::vector<cert_iptr>;
+	
+	/// Searches certificate in store with given hash property: CERT_FIND_SHA1_HASH, CERT_FIND_MD5_HASH, etc.
+	/// Basicly wrapper for CertFindCertificateInStore with given find_type for hash value(CRYPT_HASH_BLOB)
+	auto find_certificate_by_hash(::HCERTSTORE cert_store, unsigned int find_type, const unsigned char * hash_data, std::size_t hash_size) -> cert_iptr;
+	/// Searches certificate in store with given SHA1 fingerprint.
+	/// Basicly wrapper for CertFindCertificateInStore with CERT_FIND_SHA1_HASH
+	auto find_certificate_by_sha1fingerprint(::HCERTSTORE cert_store, const unsigned char * fp_data, std::size_t fp_size) -> cert_iptr;
+	/// Searches certificate in store with given SHA1 fingerprint.
+	/// Basicly wrapper for CertFindCertificateInStore with CERT_FIND_SHA1_HASH
+	inline auto find_certificate_by_sha1fingerprint(::HCERTSTORE cert_store, const std::vector<unsigned char> & fingerprint) -> cert_iptr
+	{ return find_certificate_by_sha1fingerprint(cert_store, fingerprint.data(), fingerprint.size()); }
+	
 	
 	/// Adds certificate to store. Basicly a CertAddCertificateContextToStore wrapper
 	/// Throws system_error in case of errors
@@ -190,12 +247,16 @@ namespace ext::wincrypt
 	rsapubkey_info extract_rsapubkey_numbers(const CERT_CONTEXT * rsaCert);
 	rsapubkey_info extract_rsapubkey_numbers(const CRYPT_BIT_BLOB * rsaPublicKeyBlob);
 
-	std::string X509_name_string(const CERT_NAME_BLOB * name);
-	std::string X509_name_reverse_string(const CERT_NAME_BLOB * name);
+	std::string x509_name_string(const CERT_NAME_BLOB * name);
+	std::string x509_name_reverse_string(const CERT_NAME_BLOB * name);
 
-	std::wstring X509_name_wstring(const CERT_NAME_BLOB * name);
-	std::wstring X509_name_reverse_wstring(const CERT_NAME_BLOB * name);
-	
+	std::wstring x509_name_wstring(const CERT_NAME_BLOB * name);
+	std::wstring x509_name_reverse_wstring(const CERT_NAME_BLOB * name);
+		
+	/// Returns certificate SHA1 fingerprint, calcultes if needed.
+	/// Basicly wrapper for CertGetCertificateContextProperty + CERT_HASH_PROP_ID.
+	/// Throws std::system_error in case of errors
+	std::vector<unsigned char> cert_sha1fingerprint(const ::CERT_CONTEXT * cert);
 	
 	/************************************************************************/
 	/*   Certificate and private key loading from memory and files          */
