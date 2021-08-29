@@ -60,7 +60,7 @@ namespace ext::wincrypt
 	using hkey_uptr       = std::unique_ptr<::HCRYPTKEY, hkey_deleter>;
 	using hcertstore_uptr = std::unique_ptr<void /*HCERTSTORE*/, hcertstore_deleter>;
 	
-	using pkey_prov_info_uptr = std::unique_ptr<CRYPT_KEY_PROV_INFO>;
+	using pkey_prov_info_uptr = std::unique_ptr<::CRYPT_KEY_PROV_INFO>;
 
 	/************************************************************************/
 	/*                     HCRYPTPROV basic stuff                           */
@@ -133,7 +133,16 @@ namespace ext::wincrypt
 	/// https://docs.microsoft.com/en-us/windows/win32/api/wincrypt/nf-wincrypt-cryptgetkeyparam
 	/// https://docs.microsoft.com/en-us/windows/win32/seccrypto/alg-id
 	/// https://docs.microsoft.com/en-us/windows/win32/api/wincrypt/nf-wincrypt-certoidtoalgid
-	ALG_ID get_algid(::HCRYPTKEY key);
+	::ALG_ID get_algid(::HCRYPTKEY key);
+	
+	/// translates ALG_ID to keyspec(AT_KEYEXCHANGE or AT_SIGNATURE)
+	/// this done by inspecting key ALG_ID:
+	///   CALG_RSA_KEYX -> AT_KEYEXCHANGE
+	///   CALG_RSA_SIGN -> AT_SIGNATURE
+	///   CALG_DH_SF    -> AT_KEYEXCHANGE
+	///   CALG_DSS_SIGN -> AT_SIGNATURE
+	///  Otherwise throws std::runtime_error
+	std::uint32_t translate_keyspec(::ALG_ID algid);
 
 	/// obtains keyspec(AT_KEYEXCHANGE or AT_SIGNATURE) that this key is presumably have in corresponding HPROV.
 	/// this done by inspecting key ALG_ID:
@@ -141,7 +150,8 @@ namespace ext::wincrypt
 	///   CALG_RSA_SIGN -> AT_SIGNATURE
 	///   CALG_DH_SF    -> AT_KEYEXCHANGE
 	///   CALG_DSS_SIGN -> AT_SIGNATURE
-	std::uint32_t get_keyspec(::HCRYPTKEY key);
+	///  Otherwise throws std::runtime_error
+	inline std::uint32_t get_keyspec(::HCRYPTKEY key) { return translate_keyspec(get_algid(key)); }
 	
 	/************************************************************************/
 	/*               HCERTSTORE and search certificate stuff                */
@@ -212,25 +222,25 @@ namespace ext::wincrypt
 	/// basicly a wrapper for CertGetCertificateContextProperty with CERT_KEY_PROV_INFO_PROP_ID.
 	/// If not info exists for certificate - returns null.
 	/// Throws system_error in case of errors
-	auto get_provider_info(const CERT_CONTEXT * cert) -> pkey_prov_info_uptr;
+	auto get_provider_info(const ::CERT_CONTEXT * cert) -> pkey_prov_info_uptr;
 	/// sets private key provider info for given certificate, effectively associating private key with certificate
 	/// basicly a wrapper for CertSetCertificateContextProperty with CERT_KEY_PROV_INFO_PROP_ID
 	/// Throws system_error in case of errors
-	void set_provider_info(const CERT_CONTEXT * cert, const CRYPT_KEY_PROV_INFO * prov_info);
+	void set_provider_info(const ::CERT_CONTEXT * cert, const ::CRYPT_KEY_PROV_INFO * prov_info);
 	
 	/// Associates key with certificate with set_provider_info call.
 	/// This association is persistent, further calls to acquire_certificate_private_key will return this key
 	/// Throws system_error in case of errors
-	void bound_certificate_with_private_key(const CERT_CONTEXT * cert, ::HCRYPTPROV prov, unsigned keyspec);
+	void bound_certificate_with_private_key(const ::CERT_CONTEXT * cert, ::HCRYPTPROV prov, unsigned keyspec);
 	/// Removes any association of given certificate with private key, if any
 	/// Throws system_error in case of errors
-	inline void unbound_certificate(const CERT_CONTEXT * cert) { return set_provider_info(cert, nullptr); }
+	inline void unbound_certificate(const ::CERT_CONTEXT * cert) { return set_provider_info(cert, nullptr); }
 	
 	/// simple wrapper around CryptAcquireCertificatePrivateKey function:
 	/// calls CryptAcquireCertificatePrivateKey(cert, 0, nullptr, ...);
 	/// if hwnd specified - calls with CRYPT_ACQUIRE_WINDOW_HANDLE_FLAG
 	///                                                                                                  hprov         key spec
-	auto acquire_certificate_private_key(const CERT_CONTEXT * cert, void * hwnd = nullptr) -> std::tuple<hprov_handle, std::uint32_t>;
+	auto acquire_certificate_private_key(const ::CERT_CONTEXT * cert, void * hwnd = nullptr) -> std::tuple<hprov_handle, std::uint32_t>;
 	
 
 	/************************************************************************/
@@ -244,16 +254,16 @@ namespace ext::wincrypt
 		std::vector<unsigned char> modulus;
 	};
 
-	rsapubkey_info extract_rsapubkey_numbers(const CERT_CONTEXT * rsaCert);
-	rsapubkey_info extract_rsapubkey_numbers(const CRYPT_BIT_BLOB * rsaPublicKeyBlob);
+	rsapubkey_info extract_rsapubkey_numbers(const ::CERT_CONTEXT * rsaCert);
+	rsapubkey_info extract_rsapubkey_numbers(const ::CRYPT_BIT_BLOB * rsaPublicKeyBlob);
 
-	std::string x509_name_string(const CERT_NAME_BLOB * name);
-	std::string x509_name_reverse_string(const CERT_NAME_BLOB * name);
+	std::string x509_name_string(const ::CERT_NAME_BLOB * name);
+	std::string x509_name_reverse_string(const ::CERT_NAME_BLOB * name);
 
-	std::wstring x509_name_wstring(const CERT_NAME_BLOB * name);
-	std::wstring x509_name_reverse_wstring(const CERT_NAME_BLOB * name);
+	std::wstring x509_name_wstring(const ::CERT_NAME_BLOB * name);
+	std::wstring x509_name_reverse_wstring(const ::CERT_NAME_BLOB * name);
 		
-	/// Returns certificate SHA1 fingerprint, calcultes if needed.
+	/// Returns certificate SHA1 fingerprint, calculates if needed.
 	/// Basicly wrapper for CertGetCertificateContextProperty + CERT_HASH_PROP_ID.
 	/// Throws std::system_error in case of errors
 	std::vector<unsigned char> cert_sha1fingerprint(const ::CERT_CONTEXT * cert);
@@ -263,7 +273,7 @@ namespace ext::wincrypt
 	/************************************************************************/
 	
 	// https://stackoverflow.com/questions/4191312/windows-cryptoapi-cryptsignhash-with-calg-sha-256-and-private-key-from-my-keyst
-	// how to reopen private key that is associated with some certificate in store and is with bound Microsoft Base crypto provider(does not support SHA2)
+	// how to reopen private key that is associated with some certificate in store and is bound with Microsoft Base crypto provider(does not support SHA2)
 	// with different provider(MS_ENH_RSA_AES_PROV)
 
 	/// Loads X509 certificate from given memory location and with optional password(password probably will never be used).

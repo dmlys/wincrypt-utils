@@ -44,7 +44,7 @@ namespace ext::wincrypt
 		return result;
 	}
 
-	std::string integer_string(const CRYPT_INTEGER_BLOB * num)
+	std::string integer_string(const ::CRYPT_INTEGER_BLOB * num)
 	{
 		// use openssl to print big integer as decimal.
 		// openssl BIGNUM can be create from binary big-endian octet stream,
@@ -57,7 +57,7 @@ namespace ext::wincrypt
 		return result;
 	}
 
-	std::wstring integer_wstring(const CRYPT_INTEGER_BLOB * num)
+	std::wstring integer_wstring(const ::CRYPT_INTEGER_BLOB * num)
 	{
 		// use openssl to print big integer as decimal.
 		// openssl BIGNUM can be create from binary big-endian octet stream,
@@ -77,7 +77,7 @@ namespace ext::wincrypt
 		x509_iptr x509_ptr;
 		
 		auto * cert_blob_ptr = reinterpret_cast<const unsigned char *>(wincert->pbCertEncoded);
-		X509 * cert = ::d2i_X509(nullptr, &cert_blob_ptr, wincert->cbCertEncoded);
+		auto * cert = ::d2i_X509(nullptr, &cert_blob_ptr, wincert->cbCertEncoded);
 		if (not cert) throw_last_error("ext::wincrypt::create_openssl_cert: d2i_X509 for wincert blob failed");
 		x509_ptr.reset(cert, ext::noaddref);
 		
@@ -101,8 +101,8 @@ namespace ext::wincrypt
 		auto * modulus          = ::RSA_get0_n(rsa);
 		auto * public_exponent  = ::RSA_get0_e(rsa);
 		
-		auto rsa_version = RSA_get_version(rsa);
-		auto rsa_size    = RSA_size(rsa);
+		auto rsa_version = ::RSA_get_version(rsa);
+		auto rsa_size    = ::RSA_size(rsa);
 		auto bitlen      = rsa_size * 8;
 		
 		if (rsa_version != RSA_ASN1_VERSION_DEFAULT)
@@ -117,8 +117,8 @@ namespace ext::wincrypt
 		blob_buffer.resize(blobsize);
 		auto * ptr = blob_buffer.data();
 		
-		auto * blobhdr = reinterpret_cast<PUBLICKEYSTRUC *>(ptr);
-		auto * rsapub  = reinterpret_cast<RSAPUBKEY * >(ptr + sizeof(PUBLICKEYSTRUC));
+		auto * blobhdr = reinterpret_cast<::PUBLICKEYSTRUC *>(ptr);
+		auto * rsapub  = reinterpret_cast<::RSAPUBKEY * >(ptr + sizeof(::PUBLICKEYSTRUC));
 		
 		blobhdr->bType = PUBLICKEYBLOB;
 		blobhdr->bVersion = CUR_BLOB_VERSION;
@@ -127,10 +127,10 @@ namespace ext::wincrypt
 		
 		rsapub->magic = 0x32415352; // RSA2 in ASCII
 		rsapub->bitlen = bitlen;
-		rsapub->pubexp = BN_get_word(public_exponent);
+		rsapub->pubexp = ::BN_get_word(public_exponent);
 		assert(rsapub->pubexp != -1);
 		
-		auto * modulus_ptr = ptr += sizeof(PUBLICKEYSTRUC) + sizeof(RSAPUBKEY);
+		auto * modulus_ptr = ptr += sizeof(::PUBLICKEYSTRUC) + sizeof(::RSAPUBKEY);
 		
 		int res;
 		res = ::BN_bn2lebinpad(modulus, modulus_ptr, bitlen / 8);
@@ -174,8 +174,8 @@ namespace ext::wincrypt
 		auto * exponent2        = ::RSA_get0_dmq1(rsa);
 		auto * coefficient      = ::RSA_get0_iqmp(rsa);
 		
-		auto rsa_version = RSA_get_version(rsa);
-		auto rsa_size    = RSA_size(rsa);
+		auto rsa_version = ::RSA_get_version(rsa);
+		auto rsa_size    = ::RSA_size(rsa);
 		auto bitlen      = rsa_size * 8;
 		
 		if (rsa_version != RSA_ASN1_VERSION_DEFAULT)
@@ -197,8 +197,8 @@ namespace ext::wincrypt
 		blob_buffer.resize(blobsize);
 		auto * ptr = blob_buffer.data();
 		
-		auto * blobhdr = reinterpret_cast<PUBLICKEYSTRUC *>(ptr);
-		auto * rsapub  = reinterpret_cast<RSAPUBKEY * >(ptr + sizeof(PUBLICKEYSTRUC));
+		auto * blobhdr = reinterpret_cast<::PUBLICKEYSTRUC *>(ptr);
+		auto * rsapub  = reinterpret_cast<::RSAPUBKEY * >(ptr + sizeof(::PUBLICKEYSTRUC));
 		
 		blobhdr->bType = PRIVATEKEYBLOB;
 		blobhdr->bVersion = CUR_BLOB_VERSION;
@@ -207,10 +207,10 @@ namespace ext::wincrypt
 		
 		rsapub->magic = 0x32415352; // RSA2 in ASCII
 		rsapub->bitlen = bitlen;
-		rsapub->pubexp = BN_get_word(public_exponent);
+		rsapub->pubexp = ::BN_get_word(public_exponent);
 		assert(rsapub->pubexp != -1);
 		
-		auto * modulus_ptr          = ptr += sizeof(PUBLICKEYSTRUC) + sizeof(RSAPUBKEY);
+		auto * modulus_ptr          = ptr += sizeof(::PUBLICKEYSTRUC) + sizeof(::RSAPUBKEY);
 		auto * prime1_ptr           = ptr += bitlen / 8;
 		auto * prime2_ptr           = ptr += bitlen / 16;
 		auto * exponent1_ptr        = ptr += bitlen / 16;
@@ -270,14 +270,14 @@ namespace ext::wincrypt
 	
 	ext::openssl::rsa_iptr create_openssl_rsa_publickey(const unsigned char * data, std::size_t datalen)
 	{
-		if (datalen < sizeof(PUBLICKEYSTRUC))
-			throw std::runtime_error(fmt::format("ext::wincrypt::create_openssl_rsa_publickey: sizeof blob < PUBLICKEYSTRUC({} < {})", datalen, sizeof(PUBLICKEYSTRUC)));
+		if (datalen < sizeof(::PUBLICKEYSTRUC))
+			throw std::runtime_error(fmt::format("ext::wincrypt::create_openssl_rsa_publickey: sizeof blob < PUBLICKEYSTRUC({} < {})", datalen, sizeof(::PUBLICKEYSTRUC)));
 
-		if (datalen < sizeof(PUBLICKEYSTRUC) + sizeof(RSAPUBKEY))
-			throw std::runtime_error(fmt::format("ext::wincrypt::create_openssl_rsa_publickey: sizeof blob < PUBLICKEYSTRUC + RSAPUBKEY({} < {})", datalen, sizeof(PUBLICKEYSTRUC) + sizeof(RSAPUBKEY)));
+		if (datalen < sizeof(::PUBLICKEYSTRUC) + sizeof(::RSAPUBKEY))
+			throw std::runtime_error(fmt::format("ext::wincrypt::create_openssl_rsa_publickey: sizeof blob < PUBLICKEYSTRUC + RSAPUBKEY({} < {})", datalen, sizeof(::PUBLICKEYSTRUC) + sizeof(::RSAPUBKEY)));
 		
-		auto * blobhdr = reinterpret_cast<const PUBLICKEYSTRUC *>(data);
-		auto * rsapub  = reinterpret_cast<const RSAPUBKEY *>(data + sizeof(PUBLICKEYSTRUC));
+		auto * blobhdr = reinterpret_cast<const ::PUBLICKEYSTRUC *>(data);
+		auto * rsapub  = reinterpret_cast<const ::RSAPUBKEY *>(data + sizeof(::PUBLICKEYSTRUC));
 		
 		if(blobhdr->bType != PUBLICKEYBLOB)
 			throw std::runtime_error(fmt::format("ext::wincrypt::create_openssl_rsa_publickey: expected PUBLICKEYBLOB, was = {}", blobhdr->bType));
@@ -294,7 +294,7 @@ namespace ext::wincrypt
 			throw std::runtime_error(fmt::format("ext::wincrypt::create_openssl_rsa_publickey: wrong private blob size, was = {}, expected = {}", datalen, expected_blobsize));
 		
 		auto * ptr = data;
-		auto * modulus_ptr          = ptr += sizeof(PUBLICKEYSTRUC) + sizeof(RSAPUBKEY);
+		auto * modulus_ptr          = ptr += sizeof(::PUBLICKEYSTRUC) + sizeof(::RSAPUBKEY);
 		
 		int res;
 		const char * errmsg;
@@ -304,14 +304,14 @@ namespace ext::wincrypt
 		public_exponent = modulus = nullptr;
 		rsa = nullptr;
 		
-		public_exponent = BN_new();
+		public_exponent = ::BN_new();
 		if (not public_exponent) { errmsg = "ext::wincrypt::create_openssl_rsa_publickey: ::BN_new failed for public_exponent creation"; goto error; }
-		BN_set_word(public_exponent, rsapub->pubexp);
+		::BN_set_word(public_exponent, rsapub->pubexp);
 		
-		modulus = BN_lebin2bn(modulus_ptr, bitlen / 8,  nullptr);
+		modulus = ::BN_lebin2bn(modulus_ptr, bitlen / 8,  nullptr);
 		if (not modulus) { errmsg = "ext::wincrypt::create_openssl_rsa_publickey: ::BN_lebin2bn failed for modulus creation"; goto error; }
 		
-		rsa = RSA_new();
+		rsa = ::RSA_new();
 		if (not rsa) { errmsg = "ext::wincrypt::create_openssl_rsa_publickey: ::RSA_new failed"; goto error; }
 		
 		res = ::RSA_set0_key(rsa, modulus, public_exponent, nullptr);
@@ -331,14 +331,14 @@ namespace ext::wincrypt
 	
 	ext::openssl::rsa_iptr create_openssl_rsa_privatekey(const unsigned char * data, std::size_t datalen)
 	{
-		if (datalen < sizeof(PUBLICKEYSTRUC))
-			throw std::runtime_error(fmt::format("ext::wincrypt::create_openssl_rsa_privatekey: sizeof blob < PUBLICKEYSTRUC({} < {})", datalen, sizeof(PUBLICKEYSTRUC)));
+		if (datalen < sizeof(::PUBLICKEYSTRUC))
+			throw std::runtime_error(fmt::format("ext::wincrypt::create_openssl_rsa_privatekey: sizeof blob < PUBLICKEYSTRUC({} < {})", datalen, sizeof(::PUBLICKEYSTRUC)));
 
-		if (datalen < sizeof(PUBLICKEYSTRUC) + sizeof(RSAPUBKEY))
-			throw std::runtime_error(fmt::format("ext::wincrypt::create_openssl_rsa_privatekey: sizeof blob < PUBLICKEYSTRUC + RSAPUBKEY({} < {})", datalen, sizeof(PUBLICKEYSTRUC) + sizeof(RSAPUBKEY)));
+		if (datalen < sizeof(::PUBLICKEYSTRUC) + sizeof(::RSAPUBKEY))
+			throw std::runtime_error(fmt::format("ext::wincrypt::create_openssl_rsa_privatekey: sizeof blob < PUBLICKEYSTRUC + RSAPUBKEY({} < {})", datalen, sizeof(::PUBLICKEYSTRUC) + sizeof(::RSAPUBKEY)));
 		
-		auto * blobhdr = reinterpret_cast<const PUBLICKEYSTRUC *>(data);
-		auto * rsapub  = reinterpret_cast<const RSAPUBKEY *>(data + sizeof(PUBLICKEYSTRUC));
+		auto * blobhdr = reinterpret_cast<const ::PUBLICKEYSTRUC *>(data);
+		auto * rsapub  = reinterpret_cast<const ::RSAPUBKEY *>(data + sizeof(::PUBLICKEYSTRUC));
 		
 		if(blobhdr->bType != PRIVATEKEYBLOB)
 			throw std::runtime_error(fmt::format("ext::wincrypt::create_openssl_rsa_privatekey: expected PRIVATEKEYBLOB, was = {}", blobhdr->bType));
@@ -362,7 +362,7 @@ namespace ext::wincrypt
 			throw std::runtime_error(fmt::format("ext::wincrypt::create_openssl_rsa_privatekey: wrong private blob size, was = {}, expected = {}", datalen, expected_blobsize));
 		
 		auto * ptr = data;
-		auto * modulus_ptr          = ptr += sizeof(PUBLICKEYSTRUC) + sizeof(RSAPUBKEY);
+		auto * modulus_ptr          = ptr += sizeof(::PUBLICKEYSTRUC) + sizeof(::RSAPUBKEY);
 		auto * prime1_ptr           = ptr += bitlen / 8;
 		auto * prime2_ptr           = ptr += bitlen / 16;
 		auto * exponent1_ptr        = ptr += bitlen / 16;
@@ -379,34 +379,34 @@ namespace ext::wincrypt
 		public_exponent = modulus = prime1 = prime2 = exponent1 = exponent2 = coefficient = private_exponent = nullptr;
 		rsa = nullptr;
 		
-		public_exponent = BN_new();
+		public_exponent = ::BN_new();
 		if (not public_exponent) { errmsg = "ext::wincrypt::create_openssl_rsa_privatekey: ::BN_new failed for public_exponent creation"; goto error; }
-		BN_set_word(public_exponent, rsapub->pubexp);
+		::BN_set_word(public_exponent, rsapub->pubexp);
 		
-		modulus = BN_lebin2bn(modulus_ptr, bitlen / 8,  nullptr);
+		modulus = ::BN_lebin2bn(modulus_ptr, bitlen / 8,  nullptr);
 		if (not modulus) { errmsg = "ext::wincrypt::create_openssl_rsa_privatekey: ::BN_lebin2bn failed for modulus creation"; goto error; }
 		
-		prime1 = BN_lebin2bn(prime1_ptr, bitlen / 16, nullptr);
+		prime1 = ::BN_lebin2bn(prime1_ptr, bitlen / 16, nullptr);
 		if (not prime1) { errmsg = "ext::wincrypt::create_openssl_rsa_privatekey: ::BN_lebin2bn failed for prime1 creation"; goto error; }
 		
-		prime2 = BN_lebin2bn(prime2_ptr, bitlen / 16, nullptr);
+		prime2 = ::BN_lebin2bn(prime2_ptr, bitlen / 16, nullptr);
 		if (not prime2) { errmsg = "ext::wincrypt::create_openssl_rsa_privatekey: ::BN_lebin2bn failed for prime2 creation"; goto error; }
 		
-		exponent1 = BN_lebin2bn(exponent1_ptr, bitlen / 16, nullptr);
+		exponent1 = ::BN_lebin2bn(exponent1_ptr, bitlen / 16, nullptr);
 		if (not exponent1) { errmsg = "ext::wincrypt::create_openssl_rsa_privatekey: ::BN_lebin2bn failed for exponent1 creation"; goto error; }
 		
-		exponent2 = BN_lebin2bn(exponent2_ptr, bitlen / 16, nullptr);
+		exponent2 = ::BN_lebin2bn(exponent2_ptr, bitlen / 16, nullptr);
 		if (not exponent2) { errmsg = "ext::wincrypt::create_openssl_rsa_privatekey: ::BN_lebin2bn failed for exponent2 creation"; goto error; }
 		
-		coefficient = BN_lebin2bn(coefficient_ptr, bitlen / 16, nullptr);
+		coefficient = ::BN_lebin2bn(coefficient_ptr, bitlen / 16, nullptr);
 		if (not coefficient) { errmsg = "ext::wincrypt::create_openssl_rsa_privatekey: ::BN_lebin2bn failed for coefficient creation"; goto error; }
 		
-		private_exponent = BN_lebin2bn(private_exponent_ptr, bitlen / 8,  nullptr);
+		private_exponent = ::BN_lebin2bn(private_exponent_ptr, bitlen / 8,  nullptr);
 		if (not private_exponent) { errmsg = "ext::wincrypt::create_openssl_rsa_privatekey: ::BN_lebin2bn failed for private_exponent creation"; goto error;  }
 		
 		
 		
-		rsa = RSA_new();
+		rsa = ::RSA_new();
 		if (not rsa) { errmsg = "ext::wincrypt::create_openssl_rsa_privatekey: ::RSA_new failed"; goto error; }
 		
 		res = ::RSA_set0_key(rsa, modulus, public_exponent, private_exponent);
@@ -477,7 +477,7 @@ namespace ext::wincrypt
 		return create_capi_openssl_privatekey(wincert, info.get());
 	}
 	
-	auto create_capi_openssl_privatekey(const ::CERT_CONTEXT * wincert, const CRYPT_KEY_PROV_INFO * info)
+	auto create_capi_openssl_privatekey(const ::CERT_CONTEXT * wincert, const ::CRYPT_KEY_PROV_INFO * info)
 		-> std::tuple<ext::openssl::x509_iptr, ext::openssl::evp_pkey_iptr>
 	{
 		using namespace ext::openssl;
@@ -490,7 +490,7 @@ namespace ext::wincrypt
 		auto prov_name = to_utf8(info->pwszProvName);
 		
 		auto * cert_blob_ptr = reinterpret_cast<const unsigned char *>(wincert->pbCertEncoded);
-		X509 * cert = ::d2i_X509(nullptr, &cert_blob_ptr, wincert->cbCertEncoded);
+		auto * cert = ::d2i_X509(nullptr, &cert_blob_ptr, wincert->cbCertEncoded);
 		if (not cert) throw_last_error("ext::wincrypt::create_capi_openssl_privatekey: d2i_X509 for wincert blob failed");
 		x509_ptr.reset(cert, ext::noaddref);
 		

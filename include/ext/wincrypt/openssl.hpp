@@ -9,8 +9,8 @@
 namespace ext::wincrypt
 {
 	/// Prints big decimal integer, in dec
-	std::string integer_string(const CRYPT_INTEGER_BLOB * num);
-	std::wstring integer_wstring(const CRYPT_INTEGER_BLOB * num);
+	std::string integer_string(const ::CRYPT_INTEGER_BLOB * num);
+	std::wstring integer_wstring(const ::CRYPT_INTEGER_BLOB * num);
 	
 	/// Creates OpenSSL certificate from wincrypt certificate.
 	/// This function parses wincert->pbCertEncoded with ::d2i_X509
@@ -115,7 +115,7 @@ namespace ext::wincrypt
 	///     ::ENGINE_init(capi_engine);
 	/// 
 	/// @Throws system_error in case of errors
-	auto create_capi_openssl_privatekey(const ::CERT_CONTEXT * wincert, const CRYPT_KEY_PROV_INFO * info)
+	auto create_capi_openssl_privatekey(const ::CERT_CONTEXT * wincert, const ::CRYPT_KEY_PROV_INFO * info)
 		-> std::tuple<ext::openssl::x509_iptr, ext::openssl::evp_pkey_iptr>;
 }
 

@@ -245,9 +245,9 @@ namespace ext::wincrypt
 		return export_key(key, PUBLICKEYBLOB, flags, 0);
 	}
 	
-	ALG_ID get_algid(::HCRYPTKEY key)
+	::ALG_ID get_algid(::HCRYPTKEY key)
 	{
-		ALG_ID algid;
+		::ALG_ID algid;
 		DWORD len = sizeof(algid);
 		BOOL res = ::CryptGetKeyParam(key, KP_ALGID, reinterpret_cast<unsigned char *>(&algid), &len, 0);
 
@@ -257,10 +257,8 @@ namespace ext::wincrypt
 		return algid;
 	}
 
-	std::uint32_t get_keyspec(::HCRYPTKEY key)
+	std::uint32_t translate_keyspec(::ALG_ID algid)
 	{
-		auto algid = get_algid(key);
-
 		if (algid == CALG_RSA_KEYX) return AT_KEYEXCHANGE;
 		if (algid == CALG_RSA_SIGN) return AT_SIGNATURE;
 		if (algid == CALG_DH_SF)    return AT_KEYEXCHANGE;
@@ -273,7 +271,7 @@ namespace ext::wincrypt
 		throw std::runtime_error("ext::wincrypt::get_keyspec: don't know keyspec for alg "s + buffer);
 	}
 	
-	static BOOL system_store_names_callback(const void * pvSystemStore, DWORD dwFlags, PCERT_SYSTEM_STORE_INFO pStoreInfo, void * pvReserved, void * pvArg)
+	static BOOL system_store_names_callback(const void * pvSystemStore, DWORD dwFlags, ::PCERT_SYSTEM_STORE_INFO pStoreInfo, void * pvReserved, void * pvArg)
 	{
 		auto * vector = static_cast<std::vector<std::string> *>(pvArg);
 		auto * sysstore_name = static_cast<const wchar_t *>(pvSystemStore);
@@ -285,7 +283,7 @@ namespace ext::wincrypt
 		return true;
 	}
 	
-	static BOOL system_store_wnames_callback(const void * pvSystemStore, DWORD dwFlags, PCERT_SYSTEM_STORE_INFO pStoreInfo, void * pvReserved, void * pvArg)
+	static BOOL system_store_wnames_callback(const void * pvSystemStore, DWORD dwFlags, ::PCERT_SYSTEM_STORE_INFO pStoreInfo, void * pvReserved, void * pvArg)
 	{
 		auto * vector = static_cast<std::vector<std::wstring> *>(pvArg);
 		auto * sysstore_name = static_cast<const wchar_t *>(pvSystemStore);
@@ -352,7 +350,7 @@ namespace ext::wincrypt
 		
 		if (disposition == -1) disposition = CERT_STORE_ADD_NEW;
 		
-		const CERT_CONTEXT * cert;
+		const ::CERT_CONTEXT * cert;
 		BOOL res = ::CertAddEncodedCertificateToStore(
 		                 cert_store,
 		                 X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
@@ -371,7 +369,7 @@ namespace ext::wincrypt
 		
 		if (disposition == -1) disposition = CERT_STORE_ADD_NEW;
 		
-		const CERT_CONTEXT * cert2;
+		const ::CERT_CONTEXT * cert2;
 		BOOL res = ::CertAddCertificateContextToStore(cert_store, cert, disposition, &cert2);
 		if (not res) ext::throw_last_system_error("ext::wincrypt::add_certificate: CertAddCertificateContextToStore failed");
 		
@@ -392,8 +390,8 @@ namespace ext::wincrypt
 		
 		std::vector<cert_iptr> certs;
 		
-		const CERT_CONTEXT * cert = nullptr;
-		const CERT_CONTEXT * prev = nullptr;
+		const ::CERT_CONTEXT * cert = nullptr;
+		const ::CERT_CONTEXT * prev = nullptr;
 		for (;;)
 		{
 			cert = ::CertFindCertificateInStore(
@@ -431,8 +429,8 @@ namespace ext::wincrypt
 		std::vector<cert_iptr> certs;
 		std::wstring wsubject = ext::codecvt_convert::wchar_cvt::to_wchar(subject);
 		
-		const CERT_CONTEXT * cert = nullptr;
-		const CERT_CONTEXT * prev = nullptr;
+		const ::CERT_CONTEXT * cert = nullptr;
+		const ::CERT_CONTEXT * prev = nullptr;
 		for (;;)
 		{
 			cert = ::CertFindCertificateInStore(
@@ -453,7 +451,7 @@ namespace ext::wincrypt
 	{
 		assert(cert_store);
 		
-		CRYPT_HASH_BLOB hashblob;
+		::CRYPT_HASH_BLOB hashblob;
 		hashblob.cbData = hash_size;
 		hashblob.pbData = const_cast<unsigned char *>(hash_data);
 		
@@ -475,24 +473,24 @@ namespace ext::wincrypt
 		assert(cert_store);
 		assert(cert);
 		
-		const CERT_CONTEXT * imported;
+		const ::CERT_CONTEXT * imported;
 		auto res = ::CertAddCertificateContextToStore(cert_store, cert, dispositionFlags, &imported);
 		if (not res) ext::throw_last_system_error("ext::wincrypt::import_cert:: CertAddCertificateContextToStore failed");
 		
 		return cert_iptr(imported, ext::noaddref);
 	}
 	
-	pkey_prov_info_uptr get_provider_info(const CERT_CONTEXT * cert)
+	pkey_prov_info_uptr get_provider_info(const ::CERT_CONTEXT * cert)
 	{
 		assert(cert);
 		
 		DWORD len, err;
-		CRYPT_KEY_PROV_INFO * pinfo;
+		::CRYPT_KEY_PROV_INFO * pinfo;
 		bool res;
 		res = ::CertGetCertificateContextProperty(cert, CERT_KEY_PROV_INFO_PROP_ID, nullptr, &len);
 		if (not res) goto error;
 		
-		pinfo = static_cast<CRYPT_KEY_PROV_INFO *>(operator new(len));
+		pinfo = static_cast<::CRYPT_KEY_PROV_INFO *>(operator new(len));
 		res = ::CertGetCertificateContextProperty(cert, CERT_KEY_PROV_INFO_PROP_ID, pinfo, &len);
 		if (not res) goto error;
 		
@@ -506,7 +504,7 @@ namespace ext::wincrypt
 		throw std::system_error(err, std::system_category(), "ext::wincrypt::get_provider_info: CertGetCertificateContextProperty failed");
 	}
 	
-	void set_provider_info(const CERT_CONTEXT * cert, const CRYPT_KEY_PROV_INFO * prov_info)
+	void set_provider_info(const ::CERT_CONTEXT * cert, const ::CRYPT_KEY_PROV_INFO * prov_info)
 	{
 		assert(cert);
 		
@@ -514,13 +512,13 @@ namespace ext::wincrypt
 		if (not res) ext::throw_last_system_error("ext:::wincrypt::set_provider_info: ::CertSetCertificateContextProperty failed");
 	}
 	
-	void bound_certificate_with_private_key(const CERT_CONTEXT * cert, ::HCRYPTPROV prov, unsigned keyspec)
+	void bound_certificate_with_private_key(const ::CERT_CONTEXT * cert, ::HCRYPTPROV prov, unsigned keyspec)
 	{
 		auto wname = provider_wname(prov);
 		auto wcont = provider_wcontainer(prov);
 		auto type  = provider_type(prov);
 		
-		CRYPT_KEY_PROV_INFO info;
+		::CRYPT_KEY_PROV_INFO info;
 		info.pwszContainerName = wcont.data();
 		info.pwszProvName = wname.data();
 		info.dwProvType = type;
@@ -533,11 +531,11 @@ namespace ext::wincrypt
 		if (not res) ext::throw_last_system_error("ext:::wincrypt::bound_certificate_with_private_key: ::CertSetCertificateContextProperty failed");
 	}
 	
-	auto acquire_certificate_private_key(const CERT_CONTEXT * cert, void * hwnd) -> std::tuple<hprov_handle, std::uint32_t>
+	auto acquire_certificate_private_key(const ::CERT_CONTEXT * cert, void * hwnd) -> std::tuple<hprov_handle, std::uint32_t>
 	{
 		assert(cert);
 		
-		HCRYPTPROV_OR_NCRYPT_KEY_HANDLE handle = 0;
+		::HCRYPTPROV_OR_NCRYPT_KEY_HANDLE handle = 0;
 		DWORD keyspec = 0;
 		BOOL should_free;
 
@@ -552,13 +550,13 @@ namespace ext::wincrypt
 		return std::make_tuple(hprov_handle(handle, not should_free), keyspec);
 	}
 	
-	rsapubkey_info extract_rsapubkey_numbers(const CERT_CONTEXT * rsaCert)
+	rsapubkey_info extract_rsapubkey_numbers(const ::CERT_CONTEXT * rsaCert)
 	{
 		assert(rsaCert);
 		return extract_rsapubkey_numbers(&rsaCert->pCertInfo->SubjectPublicKeyInfo.PublicKey);
 	}
 
-	rsapubkey_info extract_rsapubkey_numbers(const CRYPT_BIT_BLOB * rsaPublicKeyBlob)
+	rsapubkey_info extract_rsapubkey_numbers(const ::CRYPT_BIT_BLOB * rsaPublicKeyBlob)
 	{
 		assert(rsaPublicKeyBlob);
 		
@@ -600,44 +598,44 @@ namespace ext::wincrypt
 		return result;
 	}
 
-	std::string x509_name_string(const CERT_NAME_BLOB * name)
+	std::string x509_name_string(const ::CERT_NAME_BLOB * name)
 	{
 		return to_utf8(x509_name_wstring(name));
 	}
 
-	std::wstring x509_name_wstring(const CERT_NAME_BLOB * name)
+	std::wstring x509_name_wstring(const ::CERT_NAME_BLOB * name)
 	{
 		assert(name);
 		
 		auto flags = CERT_X500_NAME_STR/* | CERT_NAME_STR_NO_PLUS_FLAG*/;
 
-		auto required = ::CertNameToStrW(X509_ASN_ENCODING, const_cast<CERT_NAME_BLOB *>(name), flags, nullptr, 0);
+		auto required = ::CertNameToStrW(X509_ASN_ENCODING, const_cast<::CERT_NAME_BLOB *>(name), flags, nullptr, 0);
 		std::wstring result;
 		result.resize(required, 0);
 
-		auto written = ::CertNameToStrW(X509_ASN_ENCODING, const_cast<CERT_NAME_BLOB *>(name), flags, result.data(), required);
+		auto written = ::CertNameToStrW(X509_ASN_ENCODING, const_cast<::CERT_NAME_BLOB *>(name), flags, result.data(), required);
 		while (not result[written - 1]) --written;
 		result.resize(written);
 
 		return result;
 	}
 
-	std::string x509_name_reverse_string(const CERT_NAME_BLOB * name)
+	std::string x509_name_reverse_string(const ::CERT_NAME_BLOB * name)
 	{
 		return to_utf8(x509_name_reverse_wstring(name));
 	}
 
-	std::wstring x509_name_reverse_wstring(const CERT_NAME_BLOB * name)
+	std::wstring x509_name_reverse_wstring(const ::CERT_NAME_BLOB * name)
 	{
 		assert(name);
 		
 		auto flags = CERT_X500_NAME_STR | CERT_NAME_STR_REVERSE_FLAG;
 
-		auto required = ::CertNameToStrW(X509_ASN_ENCODING, const_cast<CERT_NAME_BLOB *>(name), flags, nullptr, 0);
+		auto required = ::CertNameToStrW(X509_ASN_ENCODING, const_cast<::CERT_NAME_BLOB *>(name), flags, nullptr, 0);
 		std::wstring result;
 		result.resize(required, 0);
 
-		auto written = ::CertNameToStrW(X509_ASN_ENCODING, const_cast<CERT_NAME_BLOB *>(name), flags, result.data(), required);
+		auto written = ::CertNameToStrW(X509_ASN_ENCODING, const_cast<::CERT_NAME_BLOB *>(name), flags, result.data(), required);
 		
 		// trim zero terminators at end
 		while (not result[written - 1]) --written;
@@ -743,7 +741,7 @@ namespace ext::wincrypt
 		
 		BOOL res;
 		DWORD written, pkey_info_length, pkey_rsa_blob_length;
-		CRYPT_PRIVATE_KEY_INFO * pkey_info_ptr = nullptr;
+		::CRYPT_PRIVATE_KEY_INFO * pkey_info_ptr = nullptr;
 		unsigned char * pkey_rsa_blob_ptr = 0;
 		
 		hlocal_uptr pkey_info_uptr;
