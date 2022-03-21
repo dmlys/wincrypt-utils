@@ -60,7 +60,7 @@ namespace ext::wincrypt
 	using hkey_uptr       = std::unique_ptr<::HCRYPTKEY, hkey_deleter>;
 	using hcertstore_uptr = std::unique_ptr<void /*HCERTSTORE*/, hcertstore_deleter>;
 	
-	using pkey_prov_info_uptr = std::unique_ptr<::CRYPT_KEY_PROV_INFO>;
+	using pkey_prov_info_uptr = std::unique_ptr<::CRYPT_KEY_PROV_INFO, hlocal_deleter>;
 
 	/************************************************************************/
 	/*                     HCRYPTPROV basic stuff                           */

@@ -490,7 +490,7 @@ namespace ext::wincrypt
 		res = ::CertGetCertificateContextProperty(cert, CERT_KEY_PROV_INFO_PROP_ID, nullptr, &len);
 		if (not res) goto error;
 		
-		pinfo = static_cast<::CRYPT_KEY_PROV_INFO *>(operator new(len));
+		pinfo = static_cast<::CRYPT_KEY_PROV_INFO *>(::LocalAlloc(LMEM_FIXED, len));
 		res = ::CertGetCertificateContextProperty(cert, CERT_KEY_PROV_INFO_PROP_ID, pinfo, &len);
 		if (not res) goto error;
 		
