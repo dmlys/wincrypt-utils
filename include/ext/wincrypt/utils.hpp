@@ -217,6 +217,8 @@ namespace ext::wincrypt
 	/************************************************************************/
 	/*               HCRYPTPROV and certificate connection stuff            */
 	/************************************************************************/
+	/// Prints private key provider info: provider name, container name, etc
+	std::string dump_cryptkey_provider_info(const ::CRYPT_KEY_PROV_INFO * prov_info, std::string_view ident = "");
 	
 	/// obtains private key provider info for given certificate,
 	/// basicly a wrapper for CertGetCertificateContextProperty with CERT_KEY_PROV_INFO_PROP_ID.

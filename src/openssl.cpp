@@ -500,6 +500,9 @@ namespace ext::wincrypt
 		// Set key lookup method (1=substring, 2=friendlyname, 3=container name)
 		res = ::ENGINE_ctrl_cmd(capi, "lookup_method", 3, nullptr, nullptr, 0);
 		if (not res) throw_last_error("ext::wincrypt::create_capi_openssl_privatekey: ENGINE_ctrl_cmd/lookup_method=3 failed");
+		// Set CSP type, (default RSA_PROV_FULL)
+		res = ::ENGINE_ctrl_cmd(capi, "csp_type", info->dwProvType, nullptr, nullptr, 0);
+		if (not res) throw_last_error("ext::wincrypt::create_capi_openssl_privatekey: ENGINE_ctrl_cmd/csp_type failed");
 		// Set CSP name, (default CSP used if not specified)
 		res = ::ENGINE_ctrl_cmd(capi, "csp_name", 0, prov_name.data(), nullptr, 0);
 		if (not res) throw_last_error("ext::wincrypt::create_capi_openssl_privatekey: ENGINE_ctrl_cmd/csp_name failed");

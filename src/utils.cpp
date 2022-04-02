@@ -480,6 +480,70 @@ namespace ext::wincrypt
 		return cert_iptr(imported, ext::noaddref);
 	}
 	
+	static std::string keyspec_name(DWORD keyspec)
+	{
+		if (keyspec == AT_KEYEXCHANGE) return fmt::format("AT_KEYEXCHANGE({})", keyspec);
+		if (keyspec == AT_SIGNATURE  ) return fmt::format("AT_SIGNATURE({})", keyspec);
+		
+		return fmt::format("UNKNOWN({})", keyspec);
+	}
+	
+	static std::string provtype_name(DWORD provtype)
+	{
+#define ENTRY(entry) if (provtype == entry) return fmt::format(#entry"({})", provtype)
+		ENTRY(PROV_RSA_FULL);
+		ENTRY(PROV_RSA_SIG);
+		ENTRY(PROV_DSS);
+		//ENTRY(PROV_FORTEZZA);
+		ENTRY(PROV_MS_EXCHANGE);
+		ENTRY(PROV_SSL);
+		
+		//ENTRY(PROV_STT_MER);
+		//ENTRY(PROV_STT_ACQ);
+		//ENTRY(PROV_STT_BRND);
+		//ENTRY(PROV_STT_ROOT);
+		//ENTRY(PROV_STT_ISS);
+		
+		ENTRY(PROV_RSA_SCHANNEL);
+		ENTRY(PROV_DSS_DH);
+		
+		//ENTRY(PROV_EC_ECDSA_SIG);
+		//ENTRY(PROV_EC_ECNRA_SIG);
+		//ENTRY(PROV_EC_ECDSA_FULL);
+		//ENTRY(PROV_EC_ECNRA_FULL);
+		
+		ENTRY(PROV_DH_SCHANNEL);
+		//ENTRY(PROV_SPYRUS_LYNKS);
+		ENTRY(PROV_RNG);
+		//ENTRY(PROV_INTEL_SEC);
+		
+		//ENTRY(PROV_REPLACE_OWF);
+		ENTRY(PROV_RSA_AES);
+#undef ENTRY
+		
+		return fmt::format("UNKNOWN({})", provtype);
+	}
+	
+	std::string dump_cryptkey_provider_info(const ::CRYPT_KEY_PROV_INFO * prov_info, std::string_view ident)
+	{
+		std::string result;
+		result.reserve(512);
+		if (not prov_info)
+			return result.append(ident).append("No private key info\n");
+		
+		std::string provtype_str = provtype_name(prov_info->dwProvType);
+		std::string keyspec_str = keyspec_name(prov_info->dwKeySpec);
+		
+		std::string prov_name = prov_info->pwszProvName ? to_utf8(prov_info->pwszProvName) : "<null>";
+		std::string cont_name = prov_info->pwszContainerName ? to_utf8(prov_info->pwszContainerName) : "<null>";
+		
+		result.append(ident).append("Private key info:\n");
+		result += ident; result += fmt::format("  Provider Type: {}, Provider Name: {}\n", provtype_str, prov_name);
+		result += ident; result += fmt::format("  Key Spec: {}, Container Name: {}\n", keyspec_str, cont_name);
+		
+		return result;
+	}
+	
 	pkey_prov_info_uptr get_provider_info(const ::CERT_CONTEXT * cert)
 	{
 		assert(cert);
