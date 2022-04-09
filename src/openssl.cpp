@@ -1,6 +1,6 @@
 #include <boost/predef.h>
 #if BOOST_OS_WINDOWS
-#if EXT_ENABLE_OPENSSL
+#ifdef EXT_ENABLE_OPENSSL
 
 #include <winsock2.h>
 #include <windows.h>

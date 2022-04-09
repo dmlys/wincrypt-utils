@@ -1,7 +1,7 @@
 #pragma once
 #include <boost/predef.h>
 #if BOOST_OS_WINDOWS
-#if EXT_ENABLE_OPENSSL
+#ifdef EXT_ENABLE_OPENSSL
 
 #include <ext/openssl.hpp>
 #include <ext/wincrypt/utils.hpp>
