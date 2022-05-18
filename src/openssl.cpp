@@ -90,7 +90,7 @@ namespace ext::wincrypt
 		return ext::wincrypt::load_certificate(pem);
 	}
 	
-	std::vector<unsigned char> create_rsa_public_blob(::RSA * rsa)
+	std::vector<unsigned char> create_wincrypt_public_blob(::RSA * rsa)
 	{
 		using ext::openssl::throw_last_error;
 		// RSA public blob:
@@ -106,7 +106,7 @@ namespace ext::wincrypt
 		auto bitlen      = rsa_size * 8;
 		
 		if (rsa_version != RSA_ASN1_VERSION_DEFAULT)
-			throw std::runtime_error("ext::wincrypt::create_rsa_public_blob: Only RSA_ASN1_VERSION_DEFAULT supported(regular 2 prime keys, not multiprime)");
+			throw std::runtime_error("ext::wincrypt::create_wincrypt_public_blob: Only RSA_ASN1_VERSION_DEFAULT supported(regular 2 prime keys, not multiprime)");
 	
 		assert(rsa_size % 8 == 0);
 		
@@ -134,12 +134,12 @@ namespace ext::wincrypt
 		
 		int res;
 		res = ::BN_bn2lebinpad(modulus, modulus_ptr, bitlen / 8);
-		if (not res) throw_last_error("ext::wincrypt::create_rsa_public_blob: ::BN_bn2lebinpad failed for modulus");
+		if (not res) throw_last_error("ext::wincrypt::create_wincrypt_public_blob: ::BN_bn2lebinpad failed for modulus");
 		
 		return blob_buffer;
 	}
 	
-	std::vector<unsigned char> create_rsa_private_blob(::RSA * rsa)
+	std::vector<unsigned char> create_wincrypt_private_blob(::RSA * rsa)
 	{
 		using ext::openssl::throw_last_error;
 		// CryptImportKey can import private keys, for RSA/DSA/DH it's expects a blob described in following man pages
@@ -253,7 +253,7 @@ namespace ext::wincrypt
 			throw std::runtime_error(fmt::format("ext::wincrypt::create_wincrypt_public_blob: only EVP_PKEY_RSA is supported, was = {}", type));
 		
 		auto * rsa = ::EVP_PKEY_get0_RSA(pkey);
-		return create_rsa_public_blob(rsa);
+		return create_wincrypt_public_blob(rsa);
 	}
 	
 	std::vector<unsigned char> create_wincrypt_private_blob(::EVP_PKEY * pkey)
@@ -265,7 +265,7 @@ namespace ext::wincrypt
 			throw std::runtime_error(fmt::format("ext::wincrypt::create_wincrypt_private_blob: only EVP_PKEY_RSA is supported, was = {}", type));
 		
 		auto * rsa = ::EVP_PKEY_get0_RSA(pkey);
-		return create_rsa_private_blob(rsa);
+		return create_wincrypt_private_blob(rsa);
 	}
 	
 	ext::openssl::rsa_iptr create_openssl_rsa_publickey(const unsigned char * data, std::size_t datalen)
@@ -441,7 +441,7 @@ namespace ext::wincrypt
 	ext::openssl::evp_pkey_iptr create_openssl_publickey(::HCRYPTPROV prov, unsigned keyspec)
 	{
 		auto hkey = get_user_key(prov, keyspec);
-		auto blob = export_public_key(*hkey);
+		auto blob = export_public_key(hkey.get());
 		auto rsa_uptr = create_openssl_rsa_publickey(blob);
 		
 		auto pkey = ::EVP_PKEY_new();
@@ -457,7 +457,7 @@ namespace ext::wincrypt
 	ext::openssl::evp_pkey_iptr create_openssl_privatekey(::HCRYPTPROV prov, unsigned keyspec)
 	{
 		auto hkey = get_user_key(prov, keyspec);
-		auto blob = export_private_key(*hkey);
+		auto blob = export_private_key(hkey.get());
 		auto rsa_uptr = create_openssl_rsa_privatekey(blob);
 		
 		auto pkey = ::EVP_PKEY_new();

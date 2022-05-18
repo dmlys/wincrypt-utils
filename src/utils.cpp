@@ -57,18 +57,17 @@ namespace ext::wincrypt
 		assert(res); EXT_UNUSED(res);
 	}
 
+	void hkey_handle_traits::close(::HCRYPTKEY key) noexcept
+	{
+		if (not key) return;
+		BOOL res = ::CryptDestroyKey(key);
+		assert(res); EXT_UNUSED(res);
+	}
+	
 	void hlocal_deleter::operator()(void * ptr) const noexcept
 	{
 		::LocalFree(ptr);
 	};
-	
-	void hkey_deleter::operator()(::HCRYPTKEY * pkey) const noexcept
-	{
-		if (not pkey) return;
-		BOOL res = ::CryptDestroyKey(*pkey);
-		delete pkey;
-		assert(res); EXT_UNUSED(res);
-	}
 
 	void hcertstore_deleter::operator()(::HCERTSTORE store) const noexcept
 	{
@@ -197,24 +196,24 @@ namespace ext::wincrypt
 		return type;
 	}
 	
-	hkey_uptr get_user_key(::HCRYPTPROV prov, unsigned keyspec)
+	hkey_handle get_user_key(::HCRYPTPROV prov, unsigned keyspec)
 	{
-		hkey_uptr hkey(new ::HCRYPTKEY(0));
-		BOOL res = ::CryptGetUserKey(prov, keyspec, hkey.get());
+		::HCRYPTKEY hkey = 0;
+		BOOL res = ::CryptGetUserKey(prov, keyspec, &hkey);
 		if (not res) ext::throw_last_system_error("ext::wincrypt::get_user_key ::CryptGetUserKey failed");
 		
-		return hkey;
+		return hkey_handle(hkey);
 	}
 	
-	hkey_uptr import_key(::HCRYPTPROV prov, const unsigned char * blob_buffer, unsigned buffer_size, unsigned flags, ::HCRYPTKEY decryption_key)
+	hkey_handle import_key(::HCRYPTPROV prov, const unsigned char * blob_buffer, unsigned buffer_size, unsigned flags, ::HCRYPTKEY decryption_key)
 	{
 		assert(prov);
 		
-		hkey_uptr hkey(new ::HCRYPTKEY(0));
-		auto res = ::CryptImportKey(prov, blob_buffer, buffer_size, decryption_key, flags, hkey.get());
+		::HCRYPTKEY hkey = 0;
+		auto res = ::CryptImportKey(prov, blob_buffer, buffer_size, decryption_key, flags, &hkey);
 		if (not res) ext::throw_last_system_error("ext::wincrypt::import_key ::CryptImportKey failed");
 		
-		return hkey;
+		return hkey_handle(hkey);
 	}
 	
 	std::vector<unsigned char> export_key(::HCRYPTKEY key, unsigned blob_type, unsigned flags, ::HCRYPTKEY encryption_key)
@@ -475,7 +474,7 @@ namespace ext::wincrypt
 		
 		const ::CERT_CONTEXT * imported;
 		auto res = ::CertAddCertificateContextToStore(cert_store, cert, dispositionFlags, &imported);
-		if (not res) ext::throw_last_system_error("ext::wincrypt::import_cert:: CertAddCertificateContextToStore failed");
+		if (not res) ext::throw_last_system_error("ext::wincrypt::import_cert: CertAddCertificateContextToStore failed");
 		
 		return cert_iptr(imported, ext::noaddref);
 	}
@@ -565,7 +564,7 @@ namespace ext::wincrypt
 		if (err == CRYPT_E_NOT_FOUND)
 			return nullptr;
 		
-		throw std::system_error(err, std::system_category(), "ext::wincrypt::get_provider_info: CertGetCertificateContextProperty failed");
+		throw std::system_error(err, std::system_category(), "ext::wincrypt::get_provider_info: ::CertGetCertificateContextProperty failed");
 	}
 	
 	void set_provider_info(const ::CERT_CONTEXT * cert, const ::CRYPT_KEY_PROV_INFO * prov_info)

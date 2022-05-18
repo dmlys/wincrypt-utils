@@ -9,6 +9,7 @@
 #include <tuple>
 #include <functional>
 
+#include <ext/unique_handle.hpp>
 #include <ext/intrusive_ptr.hpp>
 #include <ext/intrusive_handle.hpp>
 
@@ -47,9 +48,15 @@ namespace ext::wincrypt
 		static void addref(const ::CERT_CONTEXT * pcert) noexcept;
 		static void subref(const ::CERT_CONTEXT * pcert) noexcept;
 	};
+	
+	class hkey_handle_traits
+	{
+	public:
+		static void close(::HCRYPTKEY key) noexcept;
+		static auto emptyval() noexcept -> ::HCRYPTKEY { return 0; }
+	};
 
 	struct hlocal_deleter { void operator()(void * ptr) const noexcept; };
-	struct hkey_deleter { void operator()(::HCRYPTKEY * pkey) const noexcept; };
 	struct hcertstore_deleter { void operator()(::HCERTSTORE store) const noexcept; };
 
 	using hlocal_uptr = std::unique_ptr<void, hlocal_deleter>;
@@ -57,7 +64,7 @@ namespace ext::wincrypt
 	using cert_iptr    = ext::intrusive_ptr<const ::CERT_CONTEXT, cert_ptr_traits>;
 	using hprov_handle = ext::intrusive_handle<::HCRYPTPROV, hcrypt_handle_traits>;
 
-	using hkey_uptr       = std::unique_ptr<::HCRYPTKEY, hkey_deleter>;
+	using hkey_handle     = ext::unique_handle<::HCRYPTKEY, hkey_handle_traits>;
 	using hcertstore_uptr = std::unique_ptr<void /*HCERTSTORE*/, hcertstore_deleter>;
 	
 	using pkey_prov_info_uptr = std::unique_ptr<::CRYPT_KEY_PROV_INFO, hlocal_deleter>;
@@ -115,11 +122,11 @@ namespace ext::wincrypt
 	
 	/// CryptGetUserKey wrapper
 	/// Throws system_error in case of errors
-	hkey_uptr get_user_key(::HCRYPTPROV prov, unsigned keyspec);
+	hkey_handle get_user_key(::HCRYPTPROV prov, unsigned keyspec);
 	
 	/// CryptImportKey wrapper
 	/// Throws system_error in case of errors
-	hkey_uptr import_key(::HCRYPTPROV prov, const unsigned char * blob_buffer, unsigned buffer_size, unsigned flags = 0, ::HCRYPTKEY decryption_key = 0);
+	hkey_handle import_key(::HCRYPTPROV prov, const unsigned char * blob_buffer, unsigned buffer_size, unsigned flags = 0, ::HCRYPTKEY decryption_key = 0);
 	/// CryptExportKey wrapper
 	/// Throws system_error in case of errors
 	std::vector<unsigned char> export_key(::HCRYPTKEY key, unsigned blobType, unsigned flags, ::HCRYPTKEY encryption_key = 0);

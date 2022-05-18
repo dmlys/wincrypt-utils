@@ -39,7 +39,7 @@ namespace ext::wincrypt
 	/// https://docs.microsoft.com/en-us/windows/win32/seccrypto/enhanced-provider-key-blobs
 	/// 
 	/// @Throws system_error/runtime_error for OpenSSL errors if any
-	std::vector<unsigned char> create_rsa_private_blob(::RSA * rsa);
+	std::vector<unsigned char> create_wincrypt_private_blob(::RSA * rsa);
 	
 	/// Creates and prepares PUBLICBLOB for wincrypto provider(should be any crypto provider)
 	/// Only DSA or RSA(currently only RSA) keys are supported.
