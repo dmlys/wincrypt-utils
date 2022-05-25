@@ -604,7 +604,7 @@ namespace ext::wincrypt
 
 		BOOL res = ::CryptAcquireCertificatePrivateKey(cert,
 			hwnd ? CRYPT_ACQUIRE_WINDOW_HANDLE_FLAG : 0,
-			hwnd ? hwnd : nullptr,
+			hwnd ? &hwnd : nullptr,
 			&handle, &keyspec, &should_free);
 
 		if (not res)
