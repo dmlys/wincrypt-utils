@@ -196,6 +196,37 @@ namespace ext::wincrypt
 		return type;
 	}
 	
+	std::vector<prov_alg> enum_provider_algorithms(::HCRYPTPROV hprov)
+	{
+		std::vector<prov_alg> result;
+		PROV_ENUMALGS data;
+		DWORD len = sizeof(data);
+		DWORD flags = CRYPT_FIRST;
+		
+		for (;;)
+		{
+			BOOL res = ::CryptGetProvParam(hprov, PP_ENUMALGS, reinterpret_cast<BYTE *>(&data), &len, flags);
+			if (res)
+			{
+				result.emplace_back();
+				auto & item = result.back();
+				item.algid = data.aiAlgid;
+				item.bitlen = data.dwBitLen;
+				item.name.assign(data.szName, data.dwNameLen);
+				
+				flags = CRYPT_NEXT;
+			}
+			else
+			{
+				auto err = GetLastError();
+				if (err == ERROR_NO_MORE_ITEMS)
+					return result;
+				
+				throw std::system_error(std::error_code(err, std::system_category()), "ext::wincrypt::enum_provider_algorithms: CryptGetProvParam failed");
+			}
+		}
+	}
+	
 	hkey_handle get_user_key(::HCRYPTPROV prov, unsigned keyspec)
 	{
 		::HCRYPTKEY hkey = 0;

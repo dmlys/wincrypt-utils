@@ -32,6 +32,7 @@ typedef void * HCERTSTORE;
 
 typedef unsigned int ALG_ID;
 
+
 namespace ext::wincrypt
 {
 	class hcrypt_handle_traits
@@ -119,6 +120,17 @@ namespace ext::wincrypt
 	std::wstring provider_wcontainer(::HCRYPTPROV prov);
 	// CryptGetProvParam + PP_PROVTYPE wrapper
 	unsigned provider_type(::HCRYPTPROV prov);
+	
+	/// same as WinAPI PROV_ENUMALGS but defined here as separate struct to avoid including WinAPI headers
+	struct prov_alg
+	{
+		ALG_ID       algid;
+		unsigned int bitlen;
+		std::string  name;
+	};
+	
+	/// CryptGetProvParam + PP_ENUMALGS wrapper
+	std::vector<prov_alg> enum_provider_algorithms(::HCRYPTPROV hprov);
 	
 	/// CryptGetUserKey wrapper
 	/// Throws system_error in case of errors
