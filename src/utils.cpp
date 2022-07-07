@@ -212,6 +212,10 @@ namespace ext::wincrypt
 				auto & item = result.back();
 				item.algid = data.aiAlgid;
 				item.bitlen = data.dwBitLen;
+				
+				// trim zero terminators at end
+				while (data.szName[data.dwNameLen - 1] == 0) --data.dwNameLen;
+				// and assign to std::string
 				item.name.assign(data.szName, data.dwNameLen);
 				
 				flags = CRYPT_NEXT;
@@ -732,7 +736,7 @@ namespace ext::wincrypt
 		auto written = ::CertNameToStrW(X509_ASN_ENCODING, const_cast<::CERT_NAME_BLOB *>(name), flags, result.data(), required);
 		
 		// trim zero terminators at end
-		while (not result[written - 1]) --written;
+		while (result[written - 1] == 0) --written;
 		result.resize(written);
 
 		return result;
