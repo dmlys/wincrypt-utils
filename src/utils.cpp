@@ -14,6 +14,7 @@
 
 #include <ext/config.hpp>
 #include <ext/errors.hpp>
+#include <ext/time.hpp>
 #include <ext/codecvt_conv/generic_conv.hpp>
 #include <ext/codecvt_conv/wchar_cvt.hpp>
 #include <ext/filesystem_utils.hpp>
@@ -740,6 +741,16 @@ namespace ext::wincrypt
 		result.resize(written);
 
 		return result;
+	}
+	
+	auto get_notbefore(const ::CERT_CONTEXT * cert) -> std::chrono::system_clock::time_point
+	{
+		return std::chrono::system_clock::from_time_t(ext::from_filetime(&cert->pCertInfo->NotBefore));
+	}
+	
+	auto get_notafter(const ::CERT_CONTEXT * cert) -> std::chrono::system_clock::time_point
+	{
+		return std::chrono::system_clock::from_time_t(ext::from_filetime(&cert->pCertInfo->NotAfter));
 	}
 	
 	std::vector<unsigned char> cert_sha1fingerprint(const ::CERT_CONTEXT * cert)

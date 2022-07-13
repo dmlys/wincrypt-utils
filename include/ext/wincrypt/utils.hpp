@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <tuple>
+#include <chrono>
 #include <functional>
 
 #include <ext/unique_handle.hpp>
@@ -283,7 +284,12 @@ namespace ext::wincrypt
 
 	std::wstring x509_name_wstring(const ::CERT_NAME_BLOB * name);
 	std::wstring x509_name_reverse_wstring(const ::CERT_NAME_BLOB * name);
-		
+	
+	/// Gets certificate not before property as std::chrono::system_clock::time_point
+	auto get_notbefore(const ::CERT_CONTEXT * cert) -> std::chrono::system_clock::time_point;
+	/// Gets certificate not after property as std::chrono::system_clock::time_point
+	auto get_notafter(const ::CERT_CONTEXT * cert) -> std::chrono::system_clock::time_point;
+	
 	/// Returns certificate SHA1 fingerprint, calculates if needed.
 	/// Basicly wrapper for CertGetCertificateContextProperty + CERT_HASH_PROP_ID.
 	/// Throws std::system_error in case of errors
