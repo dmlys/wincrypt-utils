@@ -136,12 +136,7 @@ static HMODULE acquire_cryptdlg_hmodule(const char * caller)
 	
 	auto module = ::LoadLibraryExW(L"CryptDlg.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
 	if (not module)
-	{
-		std::string errmsg;
-		errmsg.append(caller).append(": ::LoadLibraryEx failed with CryptDlg.dll");
-		
-		ext::throw_last_system_error(errmsg);
-	}
+		ext::throw_last_system_error("{}: ::LoadLibraryEx failed with CryptDlg.dll", caller);
 	
 	return CRYPTDLG_HMODULE = module;
 }
@@ -154,12 +149,7 @@ static auto acquire_CertSelectCertificate(const char * caller)
 	auto module = acquire_cryptdlg_hmodule(caller);
 	auto addr = ::GetProcAddress(module, "CertSelectCertificateW");
 	if (not addr)
-	{
-		std::string errmsg;
-		errmsg.append(caller).append(": ::GetProcAddress failed with CertSelectCertificateW");
-		
-		ext::throw_last_system_error(errmsg);
-	}
+		ext::throw_last_system_error("{}: ::GetProcAddress failed with CertSelectCertificateW", caller);
 	
 	CertSelectCertificateWAddr = addr;
 	return reinterpret_cast<function_type>(CertSelectCertificateWAddr);
