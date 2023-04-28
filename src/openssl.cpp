@@ -22,6 +22,21 @@
 #include <ext/codecvt_conv/generic_conv.hpp>
 #include <ext/codecvt_conv/wchar_cvt.hpp>
 
+
+// With OpenSLL v3 some functions now accept some arguments via const pointers.
+// Logically they should be accepting those arguments via const pointers from the begining.
+// To support both v1 and v3 versions - accept const pointers and unconst them for v1.
+
+// MNNFFPPS: major minor fix patch status
+#if OPENSSL_VERSION_NUMBER >= 0x30000000
+// for v3, pointers should be already const - do nothing
+#define v1_unconst(arg) arg
+#else
+// for v1, pointers should be unconst
+template <class Type>
+static inline Type * v1_unconst(const Type * arg) { return const_cast<Type *>(arg); }
+#endif
+
 namespace ext::wincrypt
 {
 	using ext::codecvt_convert::wchar_cvt::to_utf8;
@@ -84,15 +99,16 @@ namespace ext::wincrypt
 		return x509_ptr;
 	}
 	
-	cert_iptr create_wincrypt_cert(::X509 * cert)
+	cert_iptr create_wincrypt_cert(const ::X509 * cert)
 	{
 		auto pem = ext::openssl::write_certificate(cert);
 		return ext::wincrypt::load_certificate(pem);
 	}
 	
-	std::vector<unsigned char> create_wincrypt_public_blob(::RSA * rsa)
+	std::vector<unsigned char> create_wincrypt_public_blob(const ::RSA * rsa)
 	{
 		using ext::openssl::throw_last_error;
+		
 		// RSA public blob:
 		//   PUBLICKEYSTRUC  publickeystruc;
 		//   RSAPUBKEY rsapubkey;
@@ -101,7 +117,7 @@ namespace ext::wincrypt
 		auto * modulus          = ::RSA_get0_n(rsa);
 		auto * public_exponent  = ::RSA_get0_e(rsa);
 		
-		auto rsa_version = ::RSA_get_version(rsa);
+		auto rsa_version = ::RSA_get_version(const_cast<::RSA *>(rsa));
 		auto rsa_size    = ::RSA_size(rsa);
 		auto bitlen      = rsa_size * 8;
 		
@@ -139,9 +155,10 @@ namespace ext::wincrypt
 		return blob_buffer;
 	}
 	
-	std::vector<unsigned char> create_wincrypt_private_blob(::RSA * rsa)
+	std::vector<unsigned char> create_wincrypt_private_blob(const ::RSA * rsa)
 	{
 		using ext::openssl::throw_last_error;
+		
 		// CryptImportKey can import private keys, for RSA/DSA/DH it's expects a blob described in following man pages
 		// 
 		// DH/DSS
@@ -164,7 +181,7 @@ namespace ext::wincrypt
 		//   BYTE exponent2        [rsapubkey.bitlen/16];
 		//   BYTE coefficient      [rsapubkey.bitlen/16];
 		//   BYTE privateExponent  [rsapubkey.bitlen/8];
-		
+
 		auto * modulus          = ::RSA_get0_n(rsa);
 		auto * public_exponent  = ::RSA_get0_e(rsa);
 		auto * private_exponent = ::RSA_get0_d(rsa);
@@ -174,7 +191,7 @@ namespace ext::wincrypt
 		auto * exponent2        = ::RSA_get0_dmq1(rsa);
 		auto * coefficient      = ::RSA_get0_iqmp(rsa);
 		
-		auto rsa_version = ::RSA_get_version(rsa);
+		auto rsa_version = ::RSA_get_version(const_cast<::RSA *>(rsa));
 		auto rsa_size    = ::RSA_size(rsa);
 		auto bitlen      = rsa_size * 8;
 		
@@ -244,7 +261,7 @@ namespace ext::wincrypt
 		return blob_buffer;
 	}
 
-	std::vector<unsigned char> create_wincrypt_public_blob(::EVP_PKEY * pkey)
+	std::vector<unsigned char> create_wincrypt_public_blob(const ::EVP_PKEY * pkey)
 	{
 		int type = ::EVP_PKEY_base_id(pkey); // can return EVP_PKEY_RSA/EVP_PKEY_RSA2, EVP_PKEY_DSA1, EVP_PKEY_RSA2, ...
 		type = ::EVP_PKEY_type(type);        // more like family, EVP_PKEY_RSA2 -> EVP_PKEY_RSA, EVP_PKEY_DSA2 -> EVP_PKEY_DSA, etc
@@ -252,11 +269,11 @@ namespace ext::wincrypt
 		if (type != EVP_PKEY_RSA)
 			throw std::runtime_error(fmt::format("ext::wincrypt::create_wincrypt_public_blob: only EVP_PKEY_RSA is supported, was = {}", type));
 		
-		auto * rsa = ::EVP_PKEY_get0_RSA(pkey);
+		auto * rsa = ::EVP_PKEY_get0_RSA(v1_unconst(pkey));
 		return create_wincrypt_public_blob(rsa);
 	}
 	
-	std::vector<unsigned char> create_wincrypt_private_blob(::EVP_PKEY * pkey)
+	std::vector<unsigned char> create_wincrypt_private_blob(const ::EVP_PKEY * pkey)
 	{
 		int type = ::EVP_PKEY_base_id(pkey); // can return EVP_PKEY_RSA/EVP_PKEY_RSA2, EVP_PKEY_DSA1, EVP_PKEY_RSA2, ...
 		type = ::EVP_PKEY_type(type);        // more like family, EVP_PKEY_RSA2 -> EVP_PKEY_RSA, EVP_PKEY_DSA2 -> EVP_PKEY_DSA, etc
@@ -264,7 +281,7 @@ namespace ext::wincrypt
 		if (type != EVP_PKEY_RSA)
 			throw std::runtime_error(fmt::format("ext::wincrypt::create_wincrypt_private_blob: only EVP_PKEY_RSA is supported, was = {}", type));
 		
-		auto * rsa = ::EVP_PKEY_get0_RSA(pkey);
+		auto * rsa = ::EVP_PKEY_get0_RSA(v1_unconst(pkey));
 		return create_wincrypt_private_blob(rsa);
 	}
 	
@@ -294,7 +311,7 @@ namespace ext::wincrypt
 			throw std::runtime_error(fmt::format("ext::wincrypt::create_openssl_rsa_publickey: wrong private blob size, was = {}, expected = {}", datalen, expected_blobsize));
 		
 		auto * ptr = data;
-		auto * modulus_ptr          = ptr += sizeof(::PUBLICKEYSTRUC) + sizeof(::RSAPUBKEY);
+		auto * modulus_ptr = ptr += sizeof(::PUBLICKEYSTRUC) + sizeof(::RSAPUBKEY);
 		
 		int res;
 		const char * errmsg;
