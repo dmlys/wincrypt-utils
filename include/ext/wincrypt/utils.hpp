@@ -27,8 +27,14 @@ typedef _CRYPT_BIT_BLOB CRYPT_BIT_BLOB;
 struct _CRYPT_KEY_PROV_INFO;
 typedef _CRYPT_KEY_PROV_INFO CRYPT_KEY_PROV_INFO;
 
+#if _WIN64
 typedef std::uintptr_t HCRYPTPROV;
 typedef std::uintptr_t HCRYPTKEY;
+#else
+typedef unsigned long HCRYPTPROV;
+typedef unsigned long HCRYPTKEY;
+#endif
+
 typedef void * HCERTSTORE;
 
 typedef unsigned int ALG_ID;

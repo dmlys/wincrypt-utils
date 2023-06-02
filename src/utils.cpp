@@ -306,7 +306,7 @@ namespace ext::wincrypt
 		throw std::runtime_error("ext::wincrypt::get_keyspec: don't know keyspec for alg "s + buffer);
 	}
 	
-	static BOOL system_store_names_callback(const void * pvSystemStore, DWORD dwFlags, ::PCERT_SYSTEM_STORE_INFO pStoreInfo, void * pvReserved, void * pvArg)
+	static BOOL WINAPI system_store_names_callback(const void * pvSystemStore, DWORD dwFlags, ::PCERT_SYSTEM_STORE_INFO pStoreInfo, void * pvReserved, void * pvArg)
 	{
 		auto * vector = static_cast<std::vector<std::string> *>(pvArg);
 		auto * sysstore_name = static_cast<const wchar_t *>(pvSystemStore);
@@ -318,7 +318,7 @@ namespace ext::wincrypt
 		return true;
 	}
 	
-	static BOOL system_store_wnames_callback(const void * pvSystemStore, DWORD dwFlags, ::PCERT_SYSTEM_STORE_INFO pStoreInfo, void * pvReserved, void * pvArg)
+	static BOOL WINAPI system_store_wnames_callback(const void * pvSystemStore, DWORD dwFlags, ::PCERT_SYSTEM_STORE_INFO pStoreInfo, void * pvReserved, void * pvArg)
 	{
 		auto * vector = static_cast<std::vector<std::wstring> *>(pvArg);
 		auto * sysstore_name = static_cast<const wchar_t *>(pvSystemStore);
