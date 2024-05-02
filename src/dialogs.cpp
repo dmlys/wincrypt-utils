@@ -236,7 +236,7 @@ namespace ext::wincrypt
 			DWORD err = ::GetLastError();
 			// if cancel is pressed - GetLastError will be 0,
 			// if filter filtered out all certs, and user pressed ok - GetLastError will be ERROR_END_OF_MEDIA
-			if (err and err != ERROR_END_OF_MEDIA)
+			if (err and err != ERROR_END_OF_MEDIA and err != ERROR_NO_TOKEN)
 				throw std::system_error(std::error_code(err, std::system_category()), "ext::wincrypt::select_certificate: ::CertSelectCertificate failed");
 			
 			assert(array_cert_context[0] == nullptr);
