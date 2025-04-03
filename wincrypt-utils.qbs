@@ -20,7 +20,7 @@ StaticLibrary
 		Depends { name: "extlib" }
 
 		cpp.cxxLanguageVersion : "c++17"
-		cpp.includePaths : ["include"]
+		cpp.includePaths : [exportingProduct.sourceDirectory + "/include"]
 	}
 
 	files: [
