@@ -47,7 +47,7 @@ namespace ext::wincrypt
 	public:
 		static void addref(::HCRYPTPROV hprov) noexcept;
 		static void subref(::HCRYPTPROV hprov) noexcept;
-		static auto defval(::HCRYPTPROV hprov) noexcept ->::HCRYPTPROV;
+		static auto defval(::HCRYPTPROV hprov) noexcept -> ::HCRYPTPROV;
 	};
 
 	class cert_ptr_traits
@@ -101,7 +101,7 @@ namespace ext::wincrypt
 	///  CRYPT_SILENT         - The application requests that the CSP not display any user interface (UI) for this context.
 	///                         If the CSP must display the UI to operate, the call fails and the NTE_SILENT_CONTEXT error code is set as the last error.
 	/// 
-	/// interesting provider names: 
+	/// interesting provider names:
 	///   MS_DEF_PROV      - Microsoft Base Cryptographic Provider;     type = PROV_RSA_FULL
 	///                      https://docs.microsoft.com/en-us/windows/win32/seccrypto/microsoft-base-cryptographic-provider
 	///   MS_ENHANCED_PROV - Microsoft Enhanced Cryptographic Provider; type = PROV_RSA_FULL
@@ -285,11 +285,11 @@ namespace ext::wincrypt
 	rsapubkey_info extract_rsapubkey_numbers(const ::CERT_CONTEXT * rsaCert);
 	rsapubkey_info extract_rsapubkey_numbers(const ::CRYPT_BIT_BLOB * rsaPublicKeyBlob);
 
-	std::string x509_name_string(const ::CERT_NAME_BLOB * name);
-	std::string x509_name_reverse_string(const ::CERT_NAME_BLOB * name);
+	std::string cert_name_string(const ::CERT_NAME_BLOB * name);
+	std::string cert_name_reverse_string(const ::CERT_NAME_BLOB * name);
 
-	std::wstring x509_name_wstring(const ::CERT_NAME_BLOB * name);
-	std::wstring x509_name_reverse_wstring(const ::CERT_NAME_BLOB * name);
+	std::wstring cert_name_wstring(const ::CERT_NAME_BLOB * name);
+	std::wstring cert_name_reverse_wstring(const ::CERT_NAME_BLOB * name);
 	
 	/// Gets certificate not before property as std::chrono::system_clock::time_point
 	auto get_notbefore(const ::CERT_CONTEXT * cert) -> std::chrono::system_clock::time_point;

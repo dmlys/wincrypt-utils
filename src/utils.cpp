@@ -1,7 +1,7 @@
 #include <boost/predef.h>
 #if BOOST_OS_WINDOWS
 
-#include <winsock2.h>
+//#include <winsock2.h>
 #include <windows.h>
 #include <wincrypt.h>
 
@@ -90,7 +90,7 @@ namespace ext::wincrypt
 			auto containera = to_utf8(container ? container : L"<null>");
 			std::string errmsg = fmt::format("ext::wincrypt::acquire_provider: CryptAcquireContext failed with provname = {}, container = {}, type = {}, flags = {}", provnamea, containera, type, flags);
 
-			throw std::system_error(err, std::system_category(), errmsg);						
+			throw std::system_error(err, std::system_category(), errmsg);
 		}
 
 		return hprov_handle(hprov, ext::noaddref);
@@ -697,12 +697,12 @@ namespace ext::wincrypt
 		return result;
 	}
 
-	std::string x509_name_string(const ::CERT_NAME_BLOB * name)
+	std::string cert_name_string(const ::CERT_NAME_BLOB * name)
 	{
-		return to_utf8(x509_name_wstring(name));
+		return to_utf8(cert_name_wstring(name));
 	}
 
-	std::wstring x509_name_wstring(const ::CERT_NAME_BLOB * name)
+	std::wstring cert_name_wstring(const ::CERT_NAME_BLOB * name)
 	{
 		assert(name);
 		
@@ -713,18 +713,21 @@ namespace ext::wincrypt
 		result.resize(required, 0);
 
 		auto written = ::CertNameToStrW(X509_ASN_ENCODING, const_cast<::CERT_NAME_BLOB *>(name), flags, result.data(), required);
-		while (not result[written - 1]) --written;
+		
+		// trim zero terminators at end
+		while (not result[written - 1])
+			--written;
 		result.resize(written);
 
 		return result;
 	}
 
-	std::string x509_name_reverse_string(const ::CERT_NAME_BLOB * name)
+	std::string cert_name_reverse_string(const ::CERT_NAME_BLOB * name)
 	{
-		return to_utf8(x509_name_reverse_wstring(name));
+		return to_utf8(cert_name_reverse_wstring(name));
 	}
 
-	std::wstring x509_name_reverse_wstring(const ::CERT_NAME_BLOB * name)
+	std::wstring cert_name_reverse_wstring(const ::CERT_NAME_BLOB * name)
 	{
 		assert(name);
 		
@@ -737,7 +740,8 @@ namespace ext::wincrypt
 		auto written = ::CertNameToStrW(X509_ASN_ENCODING, const_cast<::CERT_NAME_BLOB *>(name), flags, result.data(), required);
 		
 		// trim zero terminators at end
-		while (result[written - 1] == 0) --written;
+		while (result[written - 1] == 0)
+			--written;
 		result.resize(written);
 
 		return result;
