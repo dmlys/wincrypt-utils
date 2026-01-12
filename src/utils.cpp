@@ -805,7 +805,7 @@ namespace ext::wincrypt
 		return content;
 	}
 
-	cert_iptr load_certificate(const char * data, std::size_t len, std::string_view passwd)
+	cert_iptr load_certificate(const char * data, std::size_t len)
 	{
 		assert(data);
 		
@@ -828,27 +828,27 @@ namespace ext::wincrypt
 		return cert_iptr(cert, ext::noaddref);
 	}
 
-	cert_iptr load_certificate_from_file(const char * path, std::string_view passwd)
+	cert_iptr load_certificate_from_file(const char * path)
 	{
 		std::vector<char> content;
 		ext::read_file(path, content, std::ios::binary);
-		return load_certificate(content.data(), content.size(), passwd);
+		return load_certificate(content.data(), content.size());
 	}
 
-	cert_iptr load_certificate_from_file(const wchar_t * path, std::string_view passwd)
+	cert_iptr load_certificate_from_file(const wchar_t * path)
 	{
 		std::vector<char> content;
 		ext::read_file(path, content, std::ios::binary);
-		return load_certificate(content.data(), content.size(), passwd);
+		return load_certificate(content.data(), content.size());
 	}
 
-	cert_iptr load_certificate_from_file(std::FILE * file, std::string_view passwd)
+	cert_iptr load_certificate_from_file(std::FILE * file)
 	{
 		auto content = read_file(file);
-		return load_certificate(content.data(), content.size(), passwd);
+		return load_certificate(content.data(), content.size());
 	}
 
-	std::vector<unsigned char> load_private_key(const char * data, std::size_t len, std::string_view passwd)
+	std::vector<unsigned char> load_private_key(const char * data, std::size_t len)
 	{
 		assert(data);
 		
@@ -896,24 +896,24 @@ namespace ext::wincrypt
 	}
 
 
-	std::vector<unsigned char> load_private_key_from_file(const char * path, std::string_view passwd)
+	std::vector<unsigned char> load_private_key_from_file(const char * path)
 	{
 		std::vector<char> content;
 		ext::read_file(path, content, std::ios::binary);
-		return load_private_key(content.data(), content.size(), passwd);
+		return load_private_key(content.data(), content.size());
 	}
 
-	std::vector<unsigned char> load_private_key_from_file(const wchar_t * path, std::string_view passwd)
+	std::vector<unsigned char> load_private_key_from_file(const wchar_t * path)
 	{
 		std::vector<char> content;
 		ext::read_file(path, content, std::ios::binary);
-		return load_private_key(content.data(), content.size(), passwd);
+		return load_private_key(content.data(), content.size());
 	}
 
-	std::vector<unsigned char> load_private_key_from_file(std::FILE * file, std::string_view passwd)
+	std::vector<unsigned char> load_private_key_from_file(std::FILE * file)
 	{
 		auto content = read_file(file);
-		return load_private_key(content.data(), content.size(), passwd);
+		return load_private_key(content.data(), content.size());
 	}
 }
 

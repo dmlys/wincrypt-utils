@@ -76,10 +76,16 @@ namespace ext::wincrypt
 	using hcertstore_uptr = std::unique_ptr<void /*HCERTSTORE*/, hcertstore_deleter>;
 	
 	using pkey_prov_info_uptr = std::unique_ptr<::CRYPT_KEY_PROV_INFO, hlocal_deleter>;
-
+	
 	/************************************************************************/
 	/*                     HCRYPTPROV basic stuff                           */
 	/************************************************************************/
+	// NOTE:
+	//   https://stackoverflow.com/questions/4191312/windows-cryptoapi-cryptsignhash-with-calg-sha-256-and-private-key-from-my-keyst
+	//   how to reopen private key that is associated with some certificate in store and is bound with Microsoft Base crypto provider(does not support SHA2)
+	//   with different provider(MS_ENH_RSA_AES_PROV)
+	
+	
 	/// wrapper around CryptAcquireContext
 	/// https://docs.microsoft.com/en-us/windows/win32/seccrypto/cryptographic-provider-types
 	/// https://docs.microsoft.com/en-us/windows/win32/api/wincrypt/nf-wincrypt-cryptacquirecontextw
@@ -118,7 +124,7 @@ namespace ext::wincrypt
 
 	hprov_handle acquire_rsa_provider(unsigned flags = 0);      // acquire_provider(nullptr, nullptr, PROV_RSA_FULL, flags)
 	hprov_handle acquire_dsa_provider(unsigned flags = 0);      // acquire_provider(nullptr, nullptr, PROV_DSS_DH, flags)
-
+	
 	/// CryptGetProvParam + PP_NAME/PP_CONTAINER wrapper
 	std::string provider_name(::HCRYPTPROV prov);
 	std::string provider_container(::HCRYPTPROV prov);
@@ -304,22 +310,17 @@ namespace ext::wincrypt
 	/************************************************************************/
 	/*   Certificate and private key loading from memory and files          */
 	/************************************************************************/
-	
-	// https://stackoverflow.com/questions/4191312/windows-cryptoapi-cryptsignhash-with-calg-sha-256-and-private-key-from-my-keyst
-	// how to reopen private key that is associated with some certificate in store and is bound with Microsoft Base crypto provider(does not support SHA2)
-	// with different provider(MS_ENH_RSA_AES_PROV)
-
-	/// Loads X509 certificate from given memory location and with optional password(password probably will never be used).
+	/// Loads X509 certificate from given memory location
 	/// Certificate expected to be in usual PEM or DER format
 	/// Throws std::system_error in case of errors
-	cert_iptr load_certificate(const char * data, std::size_t len, std::string_view passwd = "");
-	cert_iptr load_certificate_from_file(const char * path, std::string_view passwd = "");
-	cert_iptr load_certificate_from_file(const wchar_t * path, std::string_view passwd = "");
-	cert_iptr load_certificate_from_file(std::FILE * file, std::string_view passwd = "");
+	cert_iptr load_certificate(const char * data, std::size_t len);
+	cert_iptr load_certificate_from_file(const char * path);
+	cert_iptr load_certificate_from_file(const wchar_t * path);
+	cert_iptr load_certificate_from_file(std::FILE * file);
 
-	inline cert_iptr load_certificate(std::string_view str, std::string_view passwd = "") { return load_certificate(str.data(), str.size(), passwd); }
+	inline cert_iptr load_certificate(std::string_view str) { return load_certificate(str.data(), str.size()); }
 
-	/// loads private key from given memory location and with optional password.
+	/// loads private key from given memory location, private key is expected to be unencrypted(no password pretorection)
 	/// private key expected to be in usual PEM or DER format
 	/// Throws std::system_error in case of errors
 	/// NOTE: this method loads key in PKCS#8 format, identified by header -----BEGIN PRIVATE KEY-----
@@ -328,12 +329,12 @@ namespace ext::wincrypt
 	/// https://stackoverflow.com/a/20065522/1682317
 	/// NOTE: passwords not supported yet,
 	///       key is placed into private key blob and can be later imported into provider via CryptImportKey function
-	std::vector<unsigned char> load_private_key(const char * data, std::size_t len, std::string_view passwd = "");
-	std::vector<unsigned char> load_private_key_from_file(const char * path, std::string_view passwd = "");
-	std::vector<unsigned char> load_private_key_from_file(const wchar_t * path, std::string_view passwd = "");
-	std::vector<unsigned char> load_private_key_from_file(std::FILE * file, std::string_view passwd = "");
+	std::vector<unsigned char> load_private_key(const char * data, std::size_t len);
+	std::vector<unsigned char> load_private_key_from_file(const char * path);
+	std::vector<unsigned char> load_private_key_from_file(const wchar_t * path);
+	std::vector<unsigned char> load_private_key_from_file(std::FILE * file);
 
-	inline std::vector<unsigned char> load_private_key(std::string_view str, std::string_view passwd = "") { return load_private_key(str.data(), str.size(), passwd); }
+	inline std::vector<unsigned char> load_private_key(std::string_view str) { return load_private_key(str.data(), str.size()); }
 }
 
 #endif // BOOST_OS_WINDOWS
