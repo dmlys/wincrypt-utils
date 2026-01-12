@@ -157,9 +157,9 @@ namespace ext::wincrypt
 	std::vector<unsigned char> export_key(::HCRYPTKEY key, unsigned blobType, unsigned flags, ::HCRYPTKEY encryption_key = 0);
 	
 	/// export_key with PRIVATEKEYBLOB
-	std::vector<unsigned char> export_private_key(::HCRYPTKEY key, unsigned flags = 0, ::HCRYPTKEY encryption_key = 0);
+	std::vector<unsigned char> export_rsa_private_key(::HCRYPTKEY key, unsigned flags = 0, ::HCRYPTKEY encryption_key = 0);
 	/// export_key with PUBLICKEYBLOB
-	std::vector<unsigned char> export_public_key(::HCRYPTKEY key, unsigned flags = 0);
+	std::vector<unsigned char> export_rsa_public_key(::HCRYPTKEY key, unsigned flags = 0);
 	
 	/// obtains algorithm id for given key, see:
 	/// https://docs.microsoft.com/en-us/windows/win32/api/wincrypt/nf-wincrypt-cryptgetkeyparam
@@ -320,21 +320,20 @@ namespace ext::wincrypt
 
 	inline cert_iptr load_certificate(std::string_view str) { return load_certificate(str.data(), str.size()); }
 
-	/// loads private key from given memory location, private key is expected to be unencrypted(no password pretorection)
+	/// loads RSA private key from given memory location, private key is expected to be unencrypted(no password protection)
 	/// private key expected to be in usual PEM or DER format
 	/// Throws std::system_error in case of errors
 	/// NOTE: this method loads key in PKCS#8 format, identified by header -----BEGIN PRIVATE KEY-----
 	///        -----BEGIN RSA PRIVATE KEY----- is PKCS#1 and should be loaded via different method
 	/// https://stackoverflow.com/questions/20065304/differences-between-begin-rsa-private-key-and-begin-private-key
 	/// https://stackoverflow.com/a/20065522/1682317
-	/// NOTE: passwords not supported yet,
-	///       key is placed into private key blob and can be later imported into provider via CryptImportKey function
-	std::vector<unsigned char> load_private_key(const char * data, std::size_t len);
-	std::vector<unsigned char> load_private_key_from_file(const char * path);
-	std::vector<unsigned char> load_private_key_from_file(const wchar_t * path);
-	std::vector<unsigned char> load_private_key_from_file(std::FILE * file);
+	/// NOTE: key is placed into private key blob and can be later imported into provider via CryptImportKey function
+	std::vector<unsigned char> load_rsa_private_key(const char * data, std::size_t len);
+	std::vector<unsigned char> load_rsa_private_key_from_file(const char * path);
+	std::vector<unsigned char> load_rsa_private_key_from_file(const wchar_t * path);
+	std::vector<unsigned char> load_rsa_private_key_from_file(std::FILE * file);
 
-	inline std::vector<unsigned char> load_private_key(std::string_view str) { return load_private_key(str.data(), str.size()); }
+	inline std::vector<unsigned char> load_rsa_private_key_from_file(std::string_view str) { return load_rsa_private_key(str.data(), str.size()); }
 }
 
 #endif // BOOST_OS_WINDOWS

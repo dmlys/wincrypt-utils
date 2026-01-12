@@ -86,11 +86,11 @@ namespace ext::wincrypt
 	{ return create_openssl_rsa_privatekey(privatekey_blob.data(), privatekey_blob.size()); }
 	
 	/// Creates OpenSSL RSA key by extracting PUBLICBLOB of crypto RSA crypto provider,
-	/// This is convenience function, calls: get_user_key, export_public_key, create_openssl_rsa_publickey.
+	/// This is convenience function, calls: get_user_key, export_rsa_public_key, create_openssl_rsa_publickey.
 	/// @Throws system_error in case of errors
 	ext::openssl::evp_pkey_iptr create_openssl_publickey(::HCRYPTPROV prov, unsigned keyspec);
 	/// Creates OpenSSL RSA key by extracting PRIVATEBLOB of Microsoft RSA crypto provider from given prov,
-	/// This is convenience function, calls: get_user_key, export_private_key, create_openssl_rsa_privatekey.
+	/// This is convenience function, calls: get_user_key, export_rsa_private_key, create_openssl_rsa_privatekey.
 	/// @Throws system_error in case of errors
 	ext::openssl::evp_pkey_iptr create_openssl_privatekey(::HCRYPTPROV prov, unsigned keyspec);
 	

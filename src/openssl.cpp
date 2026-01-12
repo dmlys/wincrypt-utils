@@ -458,7 +458,7 @@ namespace ext::wincrypt
 	ext::openssl::evp_pkey_iptr create_openssl_publickey(::HCRYPTPROV prov, unsigned keyspec)
 	{
 		auto hkey = get_user_key(prov, keyspec);
-		auto blob = export_public_key(hkey.get());
+		auto blob = export_rsa_public_key(hkey.get());
 		auto rsa_uptr = create_openssl_rsa_publickey(blob);
 		
 		auto pkey = ::EVP_PKEY_new();
@@ -474,7 +474,7 @@ namespace ext::wincrypt
 	ext::openssl::evp_pkey_iptr create_openssl_privatekey(::HCRYPTPROV prov, unsigned keyspec)
 	{
 		auto hkey = get_user_key(prov, keyspec);
-		auto blob = export_private_key(hkey.get());
+		auto blob = export_rsa_private_key(hkey.get());
 		auto rsa_uptr = create_openssl_rsa_privatekey(blob);
 		
 		auto pkey = ::EVP_PKEY_new();

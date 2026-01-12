@@ -270,12 +270,12 @@ namespace ext::wincrypt
 		return blob;
 	}
 
-	std::vector<unsigned char> export_private_key(::HCRYPTKEY key, unsigned flags, ::HCRYPTKEY encryption_key)
+	std::vector<unsigned char> export_rsa_private_key(::HCRYPTKEY key, unsigned flags, ::HCRYPTKEY encryption_key)
 	{
 		return export_key(key, PRIVATEKEYBLOB, flags, encryption_key);
 	}
 	
-	std::vector<unsigned char> export_public_key(::HCRYPTKEY key, unsigned flags)
+	std::vector<unsigned char> export_rsa_public_key(::HCRYPTKEY key, unsigned flags)
 	{
 		return export_key(key, PUBLICKEYBLOB, flags, 0);
 	}
@@ -848,7 +848,7 @@ namespace ext::wincrypt
 		return load_certificate(content.data(), content.size());
 	}
 
-	std::vector<unsigned char> load_private_key(const char * data, std::size_t len)
+	std::vector<unsigned char> load_rsa_private_key(const char * data, std::size_t len)
 	{
 		assert(data);
 		
@@ -896,24 +896,24 @@ namespace ext::wincrypt
 	}
 
 
-	std::vector<unsigned char> load_private_key_from_file(const char * path)
+	std::vector<unsigned char> load_rsa_private_key_from_file(const char * path)
 	{
 		std::vector<char> content;
 		ext::read_file(path, content, std::ios::binary);
-		return load_private_key(content.data(), content.size());
+		return load_rsa_private_key(content.data(), content.size());
 	}
 
-	std::vector<unsigned char> load_private_key_from_file(const wchar_t * path)
+	std::vector<unsigned char> load_rsa_private_key_from_file(const wchar_t * path)
 	{
 		std::vector<char> content;
 		ext::read_file(path, content, std::ios::binary);
-		return load_private_key(content.data(), content.size());
+		return load_rsa_private_key(content.data(), content.size());
 	}
 
-	std::vector<unsigned char> load_private_key_from_file(std::FILE * file)
+	std::vector<unsigned char> load_rsa_private_key_from_file(std::FILE * file)
 	{
 		auto content = read_file(file);
-		return load_private_key(content.data(), content.size());
+		return load_rsa_private_key(content.data(), content.size());
 	}
 }
 
