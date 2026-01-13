@@ -105,7 +105,7 @@ namespace ext::wincrypt
 		return ext::wincrypt::load_certificate(pem);
 	}
 	
-	std::vector<unsigned char> create_wincrypt_public_blob(const ::RSA * rsa)
+	std::vector<unsigned char> create_wincrypt_rsa_public_blob(const ::RSA * rsa)
 	{
 		using ext::openssl::throw_last_error;
 		
@@ -122,7 +122,7 @@ namespace ext::wincrypt
 		auto bitlen      = rsa_size * 8;
 		
 		if (rsa_version != RSA_ASN1_VERSION_DEFAULT)
-			throw std::runtime_error("ext::wincrypt::create_wincrypt_public_blob: Only RSA_ASN1_VERSION_DEFAULT supported(regular 2 prime keys, not multiprime)");
+			throw std::runtime_error("ext::wincrypt::create_wincrypt_rsa_public_blob: Only RSA_ASN1_VERSION_DEFAULT supported(regular 2 prime keys, not multiprime)");
 	
 		assert(rsa_size % 8 == 0);
 		
@@ -150,12 +150,12 @@ namespace ext::wincrypt
 		
 		int res;
 		res = ::BN_bn2lebinpad(modulus, modulus_ptr, bitlen / 8);
-		if (not res) throw_last_error("ext::wincrypt::create_wincrypt_public_blob: ::BN_bn2lebinpad failed for modulus");
+		if (not res) throw_last_error("ext::wincrypt::create_wincrypt_rsa_public_blob: ::BN_bn2lebinpad failed for modulus");
 		
 		return blob_buffer;
 	}
 	
-	std::vector<unsigned char> create_wincrypt_private_blob(const ::RSA * rsa)
+	std::vector<unsigned char> create_wincrypt_rsa_private_blob(const ::RSA * rsa)
 	{
 		using ext::openssl::throw_last_error;
 		
@@ -196,7 +196,7 @@ namespace ext::wincrypt
 		auto bitlen      = rsa_size * 8;
 		
 		if (rsa_version != RSA_ASN1_VERSION_DEFAULT)
-			throw std::runtime_error("ext::wincrypt::create_rsa_private_blob: Only RSA_ASN1_VERSION_DEFAULT supported(regular 2 prime keys, not multiprime)");
+			throw std::runtime_error("ext::wincrypt::create_wincrypt_rsa_private_blob: Only RSA_ASN1_VERSION_DEFAULT supported(regular 2 prime keys, not multiprime)");
 	
 		assert(rsa_size % 8 == 0);
 		
@@ -237,52 +237,52 @@ namespace ext::wincrypt
 		
 		int res;
 		res = ::BN_bn2lebinpad(modulus,          modulus_ptr,          bitlen / 8);
-		if (not res) throw_last_error("ext::wincrypt::create_rsa_private_blob: ::BN_bn2lebinpad failed for modulus");
+		if (not res) throw_last_error("ext::wincrypt::create_wincrypt_rsa_private_blob: ::BN_bn2lebinpad failed for modulus");
 		
 		res = ::BN_bn2lebinpad(prime1,           prime1_ptr,           bitlen / 16);
-		if (not res) throw_last_error("ext::wincrypt::create_rsa_private_blob: ::BN_bn2lebinpad failed for prime1");
+		if (not res) throw_last_error("ext::wincrypt::create_wincrypt_rsa_private_blob: ::BN_bn2lebinpad failed for prime1");
 		
 		res = ::BN_bn2lebinpad(prime2,           prime2_ptr,           bitlen / 16);
-		if (not res) throw_last_error("ext::wincrypt::create_rsa_private_blob: ::BN_bn2lebinpad failed for prime2");
+		if (not res) throw_last_error("ext::wincrypt::create_wincrypt_rsa_private_blob: ::BN_bn2lebinpad failed for prime2");
 		
 		res = ::BN_bn2lebinpad(exponent1,        exponent1_ptr,        bitlen / 16);
-		if (not res) throw_last_error("ext::wincrypt::create_rsa_private_blob: ::BN_bn2lebinpad failed for exponent1");
+		if (not res) throw_last_error("ext::wincrypt::create_wincrypt_rsa_private_blob: ::BN_bn2lebinpad failed for exponent1");
 		
 		res = ::BN_bn2lebinpad(exponent2,        exponent2_ptr,        bitlen / 16);
-		if (not res) throw_last_error("ext::wincrypt::create_rsa_private_blob: ::BN_bn2lebinpad failed for exponent2");
+		if (not res) throw_last_error("ext::wincrypt::create_wincrypt_rsa_private_blob: ::BN_bn2lebinpad failed for exponent2");
 		
 		res = ::BN_bn2lebinpad(coefficient,      coefficient_ptr,      bitlen / 16);
-		if (not res) throw_last_error("ext::wincrypt::create_rsa_private_blob: ::BN_bn2lebinpad failed for coefficient");
+		if (not res) throw_last_error("ext::wincrypt::create_wincrypt_rsa_private_blob: ::BN_bn2lebinpad failed for coefficient");
 		
 		res = ::BN_bn2lebinpad(private_exponent, private_exponent_ptr, bitlen / 8);
-		if (not res) throw_last_error("ext::wincrypt::create_rsa_private_blob: ::BN_bn2lebinpad failed for private_exponent");
+		if (not res) throw_last_error("ext::wincrypt::create_wincrypt_rsa_private_blob: ::BN_bn2lebinpad failed for private_exponent");
 		
 		
 		return blob_buffer;
 	}
 
-	std::vector<unsigned char> create_wincrypt_public_blob(const ::EVP_PKEY * pkey)
+	std::vector<unsigned char> create_wincrypt_rsa_public_blob(const ::EVP_PKEY * pkey)
 	{
 		int type = ::EVP_PKEY_base_id(pkey); // can return EVP_PKEY_RSA/EVP_PKEY_RSA2, EVP_PKEY_DSA1, EVP_PKEY_RSA2, ...
 		type = ::EVP_PKEY_type(type);        // more like family, EVP_PKEY_RSA2 -> EVP_PKEY_RSA, EVP_PKEY_DSA2 -> EVP_PKEY_DSA, etc
 		
 		if (type != EVP_PKEY_RSA)
-			throw std::runtime_error(fmt::format("ext::wincrypt::create_wincrypt_public_blob: only EVP_PKEY_RSA is supported, was = {}", type));
+			throw std::runtime_error(fmt::format("ext::wincrypt::create_wincrypt_rsa_public_blob: only EVP_PKEY_RSA is supported, was = {}", type));
 		
 		auto * rsa = ::EVP_PKEY_get0_RSA(v1_unconst(pkey));
-		return create_wincrypt_public_blob(rsa);
+		return create_wincrypt_rsa_public_blob(rsa);
 	}
 	
-	std::vector<unsigned char> create_wincrypt_private_blob(const ::EVP_PKEY * pkey)
+	std::vector<unsigned char> create_wincrypt_rsa_private_blob(const ::EVP_PKEY * pkey)
 	{
 		int type = ::EVP_PKEY_base_id(pkey); // can return EVP_PKEY_RSA/EVP_PKEY_RSA2, EVP_PKEY_DSA1, EVP_PKEY_RSA2, ...
 		type = ::EVP_PKEY_type(type);        // more like family, EVP_PKEY_RSA2 -> EVP_PKEY_RSA, EVP_PKEY_DSA2 -> EVP_PKEY_DSA, etc
 		
 		if (type != EVP_PKEY_RSA)
-			throw std::runtime_error(fmt::format("ext::wincrypt::create_wincrypt_private_blob: only EVP_PKEY_RSA is supported, was = {}", type));
+			throw std::runtime_error(fmt::format("ext::wincrypt::create_wincrypt_rsa_private_blob: only EVP_PKEY_RSA is supported, was = {}", type));
 		
 		auto * rsa = ::EVP_PKEY_get0_RSA(v1_unconst(pkey));
-		return create_wincrypt_private_blob(rsa);
+		return create_wincrypt_rsa_private_blob(rsa);
 	}
 	
 	ext::openssl::rsa_iptr create_openssl_rsa_publickey(const unsigned char * data, std::size_t datalen)
@@ -308,7 +308,7 @@ namespace ext::wincrypt
 		        + bitlen / 8;  // modulus
 		
 		if (datalen < expected_blobsize)
-			throw std::runtime_error(fmt::format("ext::wincrypt::create_openssl_rsa_publickey: wrong private blob size, was = {}, expected = {}", datalen, expected_blobsize));
+			throw std::runtime_error(fmt::format("ext::wincrypt::create_openssl_rsa_publickey: wrong public blob size, was = {}, expected = {}", datalen, expected_blobsize));
 		
 		auto * ptr = data;
 		auto * modulus_ptr = ptr += sizeof(::PUBLICKEYSTRUC) + sizeof(::RSAPUBKEY);
@@ -455,34 +455,34 @@ namespace ext::wincrypt
 		throw std::system_error(errc, errmsg);
 	}
 	
-	ext::openssl::evp_pkey_iptr create_openssl_publickey(::HCRYPTPROV prov, unsigned keyspec)
+	ext::openssl::evp_pkey_iptr create_openssl_rsa_publickey(::HCRYPTPROV prov, unsigned keyspec)
 	{
 		auto hkey = get_user_key(prov, keyspec);
 		auto blob = export_rsa_public_key(hkey.get());
 		auto rsa_uptr = create_openssl_rsa_publickey(blob);
 		
 		auto pkey = ::EVP_PKEY_new();
-		if (not pkey) ext::openssl::throw_last_error("ext::wincrypt::create_openssl_publickey: ::EVP_PKEY_new failed");
+		if (not pkey) ext::openssl::throw_last_error("ext::wincrypt::create_openssl_rsa_publickey: ::EVP_PKEY_new failed");
 		
 		ext::openssl::evp_pkey_iptr pkey_iptr(pkey, ext::noaddref);
 		auto res = ::EVP_PKEY_assign_RSA(pkey, rsa_uptr.release());
-		if (not res) ext::openssl::throw_last_error("ext::wincrypt::create_openssl_publickey: ::EVP_PKEY_assign_RSA failed");
+		if (not res) ext::openssl::throw_last_error("ext::wincrypt::create_openssl_rsa_publickey: ::EVP_PKEY_assign_RSA failed");
 		
 		return pkey_iptr;
 	}
 	
-	ext::openssl::evp_pkey_iptr create_openssl_privatekey(::HCRYPTPROV prov, unsigned keyspec)
+	ext::openssl::evp_pkey_iptr create_openssl_rsa_privatekey(::HCRYPTPROV prov, unsigned keyspec)
 	{
 		auto hkey = get_user_key(prov, keyspec);
 		auto blob = export_rsa_private_key(hkey.get());
 		auto rsa_uptr = create_openssl_rsa_privatekey(blob);
 		
 		auto pkey = ::EVP_PKEY_new();
-		if (not pkey) ext::openssl::throw_last_error("ext::wincrypt::create_openssl_privatekey: ::EVP_PKEY_new failed");
+		if (not pkey) ext::openssl::throw_last_error("ext::wincrypt::create_openssl_rsa_privatekey: ::EVP_PKEY_new failed");
 		
 		ext::openssl::evp_pkey_iptr pkey_iptr(pkey, ext::noaddref);
 		auto res = ::EVP_PKEY_assign_RSA(pkey, rsa_uptr.release());
-		if (not res) ext::openssl::throw_last_error("ext::wincrypt::create_openssl_privatekey: ::EVP_PKEY_assign_RSA failed");
+		if (not res) ext::openssl::throw_last_error("ext::wincrypt::create_openssl_rsa_privatekey: ::EVP_PKEY_assign_RSA failed");
 		
 		return pkey_iptr;
 	}

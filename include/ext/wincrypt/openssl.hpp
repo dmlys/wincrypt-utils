@@ -22,15 +22,15 @@ namespace ext::wincrypt
 	cert_iptr create_wincrypt_cert(const ::X509 * cert);
 	
 	
-	/// Creates and prepares PUBLICBLOB for wincrypto provider(should be any crypto provider)
+	/// Creates and prepares PUBLICBLOB for wincrypto provider(should be any crypto provider) from OpenSSL RSA key object.
 	/// This blob is suitable for CryptImportKey function.
 	/// 
 	/// blob is described in MSDN pages:
 	/// https://docs.microsoft.com/en-us/windows/win32/seccrypto/base-provider-key-blobs#public-key-blobs
 	/// 
 	/// @Throws system_error/runtime_error for OpenSSL errors if any
-	std::vector<unsigned char> create_wincrypt_public_blob(const ::RSA * rsa);
-	/// Creates and prepares PRIVATEBLOB for Microsoft RSA base/enhanced/string/aes crypto provider
+	std::vector<unsigned char> create_wincrypt_rsa_public_blob(const ::RSA * rsa);
+	/// Creates and prepares PRIVATEBLOB for Microsoft RSA base/enhanced/string/aes crypto provider from OpenSSL RSA key object.
 	/// (basicly any Microsoft RSA crypto provider) from OpenSSL RSA key object.
 	/// This blob is suitable for CryptImportKey function.
 	/// 
@@ -39,19 +39,19 @@ namespace ext::wincrypt
 	/// https://docs.microsoft.com/en-us/windows/win32/seccrypto/enhanced-provider-key-blobs
 	/// 
 	/// @Throws system_error/runtime_error for OpenSSL errors if any
-	std::vector<unsigned char> create_wincrypt_private_blob(const ::RSA * rsa);
+	std::vector<unsigned char> create_wincrypt_rsa_private_blob(const ::RSA * rsa);
 	
-	/// Creates and prepares PUBLICBLOB for wincrypto provider(should be any crypto provider)
-	/// Only DSA or RSA(currently only RSA) keys are supported.
+	/// Creates and prepares PUBLICBLOB for wincrypto provider(should be any crypto provider) from OpenSSL EVP_PKEY key object
+	/// Only RSA keys are supported.
 	/// This blob is suitable for CryptImportKey function.
 	/// 
 	/// blob is described in MSDN pages:
 	/// https://docs.microsoft.com/en-us/windows/win32/seccrypto/base-provider-key-blobs#public-key-blobs
 	/// 
 	/// @Throws system_error/runtime_error for OpenSSL errors if any
-	std::vector<unsigned char> create_wincrypt_public_blob(const ::EVP_PKEY * pkey);
-	/// Creates and prepares PRIVATEBLOB for Microsoft RSA or DSS(DSA) crypto provider from OpenSSL EVP_PKEY key object.
-	/// Only DSA or RSA(currently only RSA) keys are supported.
+	std::vector<unsigned char> create_wincrypt_rsa_public_blob(const ::EVP_PKEY * pkey);
+	/// Creates and prepares PRIVATEBLOB for Microsoft RSA crypto provider from OpenSSL EVP_PKEY key object.
+	/// Only RSA keys are supported.
 	/// This blob is suitable for CryptImportKey function.
 	/// 
 	/// blob is described in MSDN pages:
@@ -61,7 +61,7 @@ namespace ext::wincrypt
 	/// https://docs.microsoft.com/en-us/windows/win32/seccrypto/diffie-hellman-version-3-private-key-blobs
 	/// 
 	/// @Throws system_error/runtime_error for OpenSSL errors if any
-	std::vector<unsigned char> create_wincrypt_private_blob(const ::EVP_PKEY * pkey);
+	std::vector<unsigned char> create_wincrypt_rsa_private_blob(const ::EVP_PKEY * pkey);
 	
 	/// Creates OpenSSL RSA key from PUBLICBLOB of crypto RSA crypto provider.
 	/// This blob usually comes from CryptExportKey function
@@ -88,11 +88,11 @@ namespace ext::wincrypt
 	/// Creates OpenSSL RSA key by extracting PUBLICBLOB of crypto RSA crypto provider,
 	/// This is convenience function, calls: get_user_key, export_rsa_public_key, create_openssl_rsa_publickey.
 	/// @Throws system_error in case of errors
-	ext::openssl::evp_pkey_iptr create_openssl_publickey(::HCRYPTPROV prov, unsigned keyspec);
+	ext::openssl::evp_pkey_iptr create_openssl_rsa_publickey(::HCRYPTPROV prov, unsigned keyspec);
 	/// Creates OpenSSL RSA key by extracting PRIVATEBLOB of Microsoft RSA crypto provider from given prov,
 	/// This is convenience function, calls: get_user_key, export_rsa_private_key, create_openssl_rsa_privatekey.
 	/// @Throws system_error in case of errors
-	ext::openssl::evp_pkey_iptr create_openssl_privatekey(::HCRYPTPROV prov, unsigned keyspec);
+	ext::openssl::evp_pkey_iptr create_openssl_rsa_privatekey(::HCRYPTPROV prov, unsigned keyspec);
 	
 	/// Creates OpenSSL RSA key via CAPI OpenSSL engine, it's sort of OpenSSL wrapper for wincrypt api
 	/// NOTE: capi engine must br created and initialized before this function is used.
