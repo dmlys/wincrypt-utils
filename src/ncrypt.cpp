@@ -467,6 +467,70 @@ namespace ext::wincrypt::ncrypt
 		auto content = read_file_intr_impl(file);
 		return load_rsa_private_key(content.data(), content.size());
 	}
+
+	
+	const unsigned privatekey_crypt_handle::ms_ncrypt_keyspec = CERT_NCRYPT_KEY_SPEC;
+	
+	privatekey_crypt_handle::privatekey_crypt_handle(privatekey_crypt_handle && other) noexcept
+		: m_crypt_handle(std::exchange(other.m_crypt_handle, 0)), m_keyspec(std::exchange(other.m_keyspec, 0)), m_should_free(std::exchange(other.m_should_free, 0))
+	{}
+	
+	privatekey_crypt_handle & privatekey_crypt_handle::operator =(privatekey_crypt_handle && other) noexcept
+	{
+		if (this != &other)
+		{
+			this->~privatekey_crypt_handle();
+			new (this) privatekey_crypt_handle(std::move(other));
+		}
+		
+		return *this;
+	}
+	
+	void privatekey_crypt_handle::reset() noexcept
+	{
+		if (not m_should_free)
+			return;
+		
+		if (m_keyspec == ms_ncrypt_keyspec)
+			key_handle_traits::close(m_crypt_handle);
+		else
+			hcrypt_handle_traits::subref(m_crypt_handle);
+		
+		m_crypt_handle = 0;
+		m_keyspec = 0;
+		m_should_free = 0;
+	}
+	
+	privatekey_crypt_handle::~privatekey_crypt_handle() noexcept
+	{
+		if (not m_should_free)
+			return;
+		
+		if (m_keyspec == ms_ncrypt_keyspec)
+			key_handle_traits::close(m_crypt_handle);
+		else
+			hcrypt_handle_traits::subref(m_crypt_handle);
+	}
+	
+	ext::intrusive_ptr<privatekey_crypt_handle> acquire_certificate_private_key(const ::CERT_CONTEXT * cert, unsigned flags, void * hwnd)
+	{
+		assert(cert);
+		
+		::HCRYPTPROV_OR_NCRYPT_KEY_HANDLE handle = 0;
+		DWORD keyspec = 0;
+		BOOL should_free, res;
+
+		flags |= hwnd ? CRYPT_ACQUIRE_WINDOW_HANDLE_FLAG : 0;
+		
+		res = ::CryptAcquireCertificatePrivateKey(cert,
+			flags, hwnd ? &hwnd : nullptr,
+			&handle, &keyspec, &should_free);
+
+		if (not res)
+			ext::throw_last_system_error("ext::wincrypt::ncrypt::acquire_certificate_private_key: CryptAcquireCertificatePrivateKey failed");
+
+		return ext::make_intrusive<privatekey_crypt_handle>(handle, keyspec, should_free);
+	}
 }
 
 

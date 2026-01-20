@@ -12,6 +12,8 @@
 #include <ext/intrusive_ptr.hpp>
 #include <ext/intrusive_handle.hpp>
 
+#include <ext/wincrypt/utils.hpp>
+
 
 #if _WIN64
 typedef std::uintptr_t NCRYPT_HANDLE;
@@ -258,7 +260,6 @@ namespace ext::wincrypt::ncrypt
 	void delete_key(::NCRYPT_KEY_HANDLE hkey, unsigned flags);
 	
 	
-	
 	/// Prints key info, this is mostly for logging/debugging.
 	/// Example output:
 	/// NCrypt(CNG) Private key info:
@@ -288,6 +289,73 @@ namespace ext::wincrypt::ncrypt
 	std::vector<unsigned char> load_rsa_private_key_from_file(std::FILE * file);
 
 	inline std::vector<unsigned char> load_rsa_private_key_from_file(std::string_view str) { return load_rsa_private_key(str.data(), str.size()); }
+	
+	
+	/************************************************************************/
+	/*               CryptAcquireCertificatePrivateKey stuff                */
+	/************************************************************************/
+	
+	/// Special handle container class for holding result of CryptAcquireCertificatePrivateKey.
+	/// It sort of specialized variant of NCRYPT_KEY_HANDLE and HCRYPTPROV.
+	/// 
+	/// CryptAcquireCertificatePrivateKey function have somewhat complex semantics:
+	///  it can return NCRYPT_KEY_HANDLE or HCRYPTPROV with keyspec, also it returns boolean flag - should handle be freed
+	///  those features are controlled by flags and useful in practice.
+	/// 
+	/// NCRYPT_KEY_HANDLE and HCRYPTPROV have different handle management models:
+	///  HCRYPTPROV - reference counted, reference decreased by CryptReleaseContext.
+	///  NCRYPT_KEY_HANDLE - unique handle freed by NCryptFreeObject.
+	/// HCRYPTPROV can be held by multiple references, while NCRYPT_KEY_HANDLE cannot.
+	/// And CallerFreeProvOrNCryptKey flag complicates things even more.
+	/// 
+	/// To make things somewhat simple this class maintains it's own reference counter - it's always have reference counted semantics.
+	/// It also accounts for CallerFreeProvOrNCryptKey flag and calls appropriate functions if needed.
+	class privatekey_crypt_handle : public ext::intrusive_atomic_counter<privatekey_crypt_handle>
+	{
+	private:
+		std::uintptr_t m_crypt_handle = 0;
+		unsigned m_keyspec = 0;
+		unsigned m_should_free = 0;
+		
+	public:
+		static const unsigned ms_ncrypt_keyspec; // CERT_NCRYPT_KEY_SPEC
+		
+	public:		
+		bool is_empty() const { return not m_crypt_handle; }
+		operator bool() const { return m_crypt_handle; }
+		
+		unsigned keyspec() const { return m_keyspec; }
+		
+		bool is_ncrypt() const { return m_keyspec == ms_ncrypt_keyspec; }
+		bool is_wincrypt() const { return m_keyspec != ms_ncrypt_keyspec; }
+		
+		NCRYPT_KEY_HANDLE ncrypt_handle()   const { return is_ncrypt() ? m_crypt_handle : 0; }
+		HCRYPTPROV        wincrypt_handle() const { return is_wincrypt() ? m_crypt_handle : 0; }
+		
+	public:
+		void release() noexcept { m_crypt_handle = 0; m_keyspec = 0; m_should_free = 0; }
+		void reset() noexcept;
+		
+	public:
+		static privatekey_crypt_handle ncrypt(std::uintptr_t handle) { return privatekey_crypt_handle(handle, ms_ncrypt_keyspec, 1); }
+		static privatekey_crypt_handle wincrypt(std::uintptr_t handle, unsigned keyspec) { return privatekey_crypt_handle(handle, keyspec, 1); }
+		
+		privatekey_crypt_handle(const privatekey_crypt_handle & ) = delete;
+		privatekey_crypt_handle & operator =(const privatekey_crypt_handle &) = delete;
+		
+		privatekey_crypt_handle(privatekey_crypt_handle && other) noexcept;
+		privatekey_crypt_handle & operator =(privatekey_crypt_handle && other) noexcept;
+		
+		privatekey_crypt_handle() = default;
+		privatekey_crypt_handle(std::uintptr_t crypt_handle, unsigned keyspec, unsigned should_free) noexcept
+		    : m_crypt_handle(crypt_handle), m_keyspec(keyspec), m_should_free(should_free) {}
+		~privatekey_crypt_handle() noexcept;
+	};
+
+	/// Wrapper around CryptAcquireCertificatePrivateKey function:
+	///  calls CryptAcquireCertificatePrivateKey(cert, flags, hwnd, ...);
+	///  if hwnd specified - calls with CRYPT_ACQUIRE_WINDOW_HANDLE_FLAG
+	auto acquire_certificate_private_key(const ::CERT_CONTEXT * cert, unsigned flags, void * hwnd = nullptr) -> ext::intrusive_ptr<privatekey_crypt_handle>;
 }
 
 #endif // BOOST_OS_WINDOWS
