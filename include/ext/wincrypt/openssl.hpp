@@ -95,7 +95,7 @@ namespace ext::wincrypt
 	ext::openssl::evp_pkey_iptr create_openssl_rsa_privatekey(::HCRYPTPROV prov, unsigned keyspec);
 	
 	/// Creates OpenSSL RSA key via CAPI OpenSSL engine, it's sort of OpenSSL wrapper for wincrypt api
-	/// NOTE: capi engine must br created and initialized before this function is used.
+	/// NOTE: capi engine must be created and initialized before this function is used.
 	///  somewhere in the main:
 	/// 
 	///     ::ENGINE_load_builtin_engines();
@@ -107,7 +107,7 @@ namespace ext::wincrypt
 		-> std::tuple<ext::openssl::x509_iptr, ext::openssl::evp_pkey_iptr>;
 	
 	/// Creates OpenSSL RSA key via CAPI OpenSSL engine, it's sort of OpenSSL wrapper for wincrypt api
-	/// NOTE: capi engine must br created and initialized before this function is used.
+	/// NOTE: capi engine must be created and initialized before this function is used.
 	///  somewhere in the main:
 	/// 
 	///     ::ENGINE_load_builtin_engines();

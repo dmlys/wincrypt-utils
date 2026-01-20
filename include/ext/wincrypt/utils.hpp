@@ -321,8 +321,10 @@ namespace ext::wincrypt
 
 	inline cert_iptr load_certificate(std::string_view str) { return load_certificate(str.data(), str.size()); }
 
-	/// loads RSA private key from given memory location, private key is expected to be unencrypted(no password protection)
+	/// Loads RSA private key from given memory location, private key is expected to be unencrypted(no password protection)
 	/// private key expected to be in usual PEM or DER format
+	/// This is basicly a wrapper for CryptDecodeObjectEx PKCS_PRIVATE_KEY_INFO
+	///                   followed by CryptDecodeObjectEx PKCS_RSA_PRIVATE_KEY.
 	/// Throws std::system_error in case of errors
 	/// NOTE: this method loads key in PKCS#8 format, identified by header -----BEGIN PRIVATE KEY-----
 	///        -----BEGIN RSA PRIVATE KEY----- is PKCS#1 and should be loaded via different method
