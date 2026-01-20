@@ -310,6 +310,7 @@ namespace ext::wincrypt
 	/************************************************************************/
 	/*   Certificate and private key loading from memory and files          */
 	/************************************************************************/
+	
 	/// Loads X509 certificate from given memory location
 	/// Certificate expected to be in usual PEM or DER format
 	/// Throws std::system_error in case of errors

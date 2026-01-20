@@ -517,14 +517,20 @@ namespace ext::wincrypt
 	
 	static std::string keyspec_name(DWORD keyspec)
 	{
+		if (keyspec == 0)              return fmt::format("CNG({})", keyspec);
 		if (keyspec == AT_KEYEXCHANGE) return fmt::format("AT_KEYEXCHANGE({})", keyspec);
 		if (keyspec == AT_SIGNATURE  ) return fmt::format("AT_SIGNATURE({})", keyspec);
-		
+
+		if (keyspec == CERT_NCRYPT_KEY_SPEC)
+			return fmt::format("CERT_NCRYPT_KEY_SPEC({})", keyspec);
+
 		return fmt::format("UNKNOWN({})", keyspec);
 	}
 	
 	static std::string provtype_name(DWORD provtype)
 	{
+		if (provtype == 0) return fmt::format("CNG({})", provtype);
+		
 #define ENTRY(entry) if (provtype == entry) return fmt::format(#entry"({})", provtype)
 		ENTRY(PROV_RSA_FULL);
 		ENTRY(PROV_RSA_SIG);
@@ -773,7 +779,7 @@ namespace ext::wincrypt
 		return result;
 	}
 	
-	static std::vector<char> read_file(std::FILE * file)
+	std::vector<char> read_file_intr_impl(std::FILE * file)
 	{
 		assert(file);
 		
@@ -844,7 +850,7 @@ namespace ext::wincrypt
 
 	cert_iptr load_certificate_from_file(std::FILE * file)
 	{
-		auto content = read_file(file);
+		auto content = read_file_intr_impl(file);
 		return load_certificate(content.data(), content.size());
 	}
 
@@ -912,7 +918,7 @@ namespace ext::wincrypt
 
 	std::vector<unsigned char> load_rsa_private_key_from_file(std::FILE * file)
 	{
-		auto content = read_file(file);
+		auto content = read_file_intr_impl(file);
 		return load_rsa_private_key(content.data(), content.size());
 	}
 }
