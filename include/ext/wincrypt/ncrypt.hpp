@@ -221,14 +221,14 @@ namespace ext::wincrypt::ncrypt
 	/// Throws system_error in case of errors
 	key_handle import_key(::NCRYPT_PROV_HANDLE hprov, const wchar_t * keyname, const wchar_t * blob_type, const unsigned char * blob_buffer, unsigned buffer_size, unsigned flags = 0, ::NCRYPT_KEY_HANDLE decryption_key = 0);
 	key_handle import_key(::NCRYPT_PROV_HANDLE hprov, const  char   * keyname, const wchar_t * blob_type, const unsigned char * blob_buffer, unsigned buffer_size, unsigned flags = 0, ::NCRYPT_KEY_HANDLE decryption_key = 0);
-	inline key_handle import_key(::NCRYPT_PROV_HANDLE hprov, nullptr_t keyname, const wchar_t * blob_type, const unsigned char * blob_buffer, unsigned buffer_size, unsigned flags = 0, ::NCRYPT_KEY_HANDLE decryption_key = 0)
+	inline key_handle import_key(::NCRYPT_PROV_HANDLE hprov, std::nullptr_t keyname, const wchar_t * blob_type, const unsigned char * blob_buffer, unsigned buffer_size, unsigned flags = 0, ::NCRYPT_KEY_HANDLE decryption_key = 0)
 	{ return import_key(hprov, static_cast<const wchar_t *>(keyname), blob_type, blob_buffer, buffer_size, flags, decryption_key); }
 	
 	inline key_handle import_key(::NCRYPT_PROV_HANDLE hprov, const wchar_t * keyname, const wchar_t * blob_type, const std::vector<unsigned char> & blob, unsigned flags, ::NCRYPT_KEY_HANDLE decryption_key = 0)
 	{ return import_key(hprov, keyname, blob_type, blob.data(), blob.size(), flags, decryption_key); }
 	inline key_handle import_key(::NCRYPT_PROV_HANDLE hprov, const  char   * keyname, const wchar_t * blob_type, const std::vector<unsigned char> & blob, unsigned flags, ::NCRYPT_KEY_HANDLE decryption_key = 0)
 	{ return import_key(hprov, keyname, blob_type, blob.data(), blob.size(), flags, decryption_key); }
-	inline key_handle import_key(::NCRYPT_PROV_HANDLE hprov, nullptr_t keyname, const wchar_t * blob_type, const std::vector<unsigned char> & blob, unsigned flags, ::NCRYPT_KEY_HANDLE decryption_key = 0)
+	inline key_handle import_key(::NCRYPT_PROV_HANDLE hprov, std::nullptr_t keyname, const wchar_t * blob_type, const std::vector<unsigned char> & blob, unsigned flags, ::NCRYPT_KEY_HANDLE decryption_key = 0)
 	{ return import_key(hprov, static_cast<const wchar_t *>(keyname), blob_type, blob, flags, decryption_key); }
 	
 	
